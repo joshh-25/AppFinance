@@ -786,9 +786,9 @@ Goal: Implement critical stability mechanisms from the Suggestions document that
 - [x] Create `backend/tests/Unit/PropertyRecordTest.php` — test property record structure
 - [x] Run `vendor/bin/phpunit --testdox` and confirm all pass (43 tests, 103 assertions ✅)
 
-### Task 22 — Cross-Month Edit Isolation Test (+2 pts)
-- [ ] Add test to `BillingFlow.integration.test.jsx`: edit Feb record, assert Jan unchanged
-- [ ] Run `npm.cmd run test -- --run` and confirm all pass
+## Task 22 — Cross-Month Edit Isolation Test (+2 pts)
+- [x] Add test to `BillingFlow.integration.test.jsx`: edit Feb record (id 302), assert Jan (id 301) untouched
+- [x] Run `npm.cmd run test -- --run` — 11 tests pass ✅
 
 ### Task 23 — Update `Features.md` Docs (+1 pt)
 - [ ] Replace old Vanilla JS / Tailwind references with React + Vite stack description
