@@ -11,6 +11,7 @@ const AMOUNT_FIELDS = new Set([
 ]);
 
 export default function PaymentForm({
+  fieldsAnimating,
   panelMode,
   formModeLabel,
   isEditMode,
@@ -142,7 +143,7 @@ export default function PaymentForm({
         </div>
       </div>
       {panelMode === 'form' && (
-        <div className="payment-form-content">
+        <div className={`payment-form-content bill-fields-region${fieldsAnimating ? ' bill-fields-animating' : ''}`}>
           <form id="payment-form" className="form-grid" onSubmit={onSubmit} autoComplete="off">
             {allTypeFields.map(([name]) => (
               <input key={`hidden-${name}`} type="hidden" name={name} value={form[name]} readOnly />
@@ -197,7 +198,7 @@ export default function PaymentForm({
       )}
 
       {panelMode === 'table' && !loadingBillRows && !isBillRowsError && filteredBillRows.length > 0 && (
-        <div className="property-records-content">
+        <div className={`property-records-content bill-fields-region${fieldsAnimating ? ' bill-fields-animating' : ''}`}>
           <div className="table-wrap property-records-table-wrap">
             <table>
               <thead>
