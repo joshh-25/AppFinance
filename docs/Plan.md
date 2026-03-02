@@ -818,15 +818,16 @@ Goal: Implement critical stability mechanisms from the Suggestions document that
 
 ---
 
-## Task 26 — Persistent Header Layout (Anti-Flash)
+## Task 26 — Persistent Bill Form Card (Anti-Flash)
 
-**Problem:** Navigation between pages causes the Application Header (Title, Subtitle, and Dark Toggle Button) to visually flash/remount.
+**Problem:** Navigation between bill tabs (WiFi / Water / etc.) causes the outer "Bills Form" white card to visually flash and reload. This happens because `AppLayout.jsx` uses the exact URL path (`/bills/water`, `/bills/wifi`) as the React `key` for the page content, forcing a full unmount of the card container on every tab click.
 
 **Goal:**
-- Separate the header from the page content so the Header persists exactly like the Sidebar.
-- Dark mode button stays interactive without flashing during route transitions.
+- The outer Bills Form card (background, border, buttons) should stay completely persistent and mounted when switching tabs.
+- Only the inner fields should re-render and trigger the slide-fade animation added in Task 25.
 
 **Implementation:**
-- [ ] In `AppLayout.jsx`, move `<header className="shell-header">` outside of `<div key={location.pathname + search} className="route-transition-layer">`.
-- [ ] Keep only the `<div className="route-transition-content">` inside the keyed route transition layer.
+- [ ] In `AppLayout.jsx`, compute a stable `transitionKey`.
+- [ ] If the path starts with `/bills/`, use `"bills-module"` as the key instead of the exact path.
+- [ ] Apply `key={transitionKey}` to the `<div className="route-transition-layer">`.
 - [ ] Run `npm.cmd run test -- --run` to verify UI shell tests still pass.

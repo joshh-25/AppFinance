@@ -204,7 +204,8 @@ export default function AppLayout({
           </div>
         </header>
 
-        <div key={`${location.pathname}${location.search}`} className="route-transition-layer">
+        {/* Stable key for bill tabs ensures the outer form container stays permanently mounted */}
+        <div key={location.pathname.startsWith('/bills/') ? 'bills-module' : `${location.pathname}${location.search}`} className="route-transition-layer">
           <div
             className="route-transition-content"
             style={isLockScrollLayout && lockContentHeight !== null ? { height: `${lockContentHeight}px` } : undefined}
