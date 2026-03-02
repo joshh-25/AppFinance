@@ -1,0 +1,10 @@
+{
+  "name": "Finance App",
+  "short_name": "Finance",
+  "start_url": "/Finance/",
+  "scope": "/Finance/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#eab308",
+  "description": "Finance billing and property records web app for mobile and desktop browsers."
+}

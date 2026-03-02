@@ -1,0 +1,971 @@
+<?php
+/*
+ * Finance App File: api/bootstrap.php
+ * Purpose: Shared API bootstrap, config, and helper functions.
+ */
+header('Content-Type: application/json');
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: SAMEORIGIN');
+header('Referrer-Policy: strict-origin-when-cross-origin');
+header('Cross-Origin-Resource-Policy: same-origin');
+header('Permissions-Policy: camera=(self), microphone=(), geolocation=()');
+header('Cache-Control: no-store, no-cache, must-revalidate');
+header('Pragma: no-cache');
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
+require_once __DIR__ . '/../../db.php';
+
+if (!defined('API_BILL_TYPES')) {
+    define('API_BILL_TYPES', ['water', 'internet', 'electricity', 'association_dues']);
+}
+
+function db_error_response($e)
+{
+    error_log('Finance API DB error: ' . $e->getMessage());
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Database error.']);
+}
+
+function get_request_ip_address()
+{
+    $candidates = [
+        $_SERVER['HTTP_CF_CONNECTING_IP'] ?? '',
+        $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '',
+        $_SERVER['REMOTE_ADDR'] ?? '',
+    ];
+
+    foreach ($candidates as $candidate) {
+        $raw = trim((string) $candidate);
+        if ($raw === '') {
+            continue;
+        }
+
+        if (strpos($raw, ',') !== false) {
+            $parts = explode(',', $raw);
+            $raw = trim((string) ($parts[0] ?? ''));
+        }
+
+        if (filter_var($raw, FILTER_VALIDATE_IP)) {
+            return $raw;
+        }
+    }
+
+    return '0.0.0.0';
+}
+
+function audit_log_event($eventName, $context = [])
+{
+    $payload = [
+        'event' => trim((string) $eventName),
+        'time_utc' => gmdate('Y-m-d\TH:i:s\Z'),
+        'ip' => get_request_ip_address(),
+        'request_method' => $_SERVER['REQUEST_METHOD'] ?? '',
+        'request_uri' => $_SERVER['REQUEST_URI'] ?? '',
+        'user_id' => isset($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : 0,
+        'context' => is_array($context) ? $context : [],
+    ];
+
+    $encoded = json_encode($payload, JSON_UNESCAPED_SLASHES);
+    if ($encoded !== false) {
+        error_log('FINANCE_AUDIT ' . $encoded);
+    } else {
+        error_log('FINANCE_AUDIT ' . $eventName);
+    }
+}
+
+function query_int_param($key, $default = 0, $min = 0, $max = 10000)
+{
+    $raw = $_GET[$key] ?? null;
+    if ($raw === null || $raw === '') {
+        return $default;
+    }
+
+    $value = (int) $raw;
+    if ($value < $min) {
+        return $min;
+    }
+    if ($value > $max) {
+        return $max;
+    }
+    return $value;
+}
+
+function query_string_param($key, $default = '')
+{
+    $raw = $_GET[$key] ?? null;
+    if ($raw === null) {
+        return $default;
+    }
+    return trim((string) $raw);
+}
+
+function read_pagination_from_query($defaultPerPage = 25, $maxPerPage = 200)
+{
+    $page = query_int_param('page', 1, 1, 1000000);
+    $perPage = query_int_param('per_page', $defaultPerPage, 0, $maxPerPage);
+    $paginationRequested = isset($_GET['page']) || isset($_GET['per_page']);
+    $enabled = $paginationRequested && $perPage > 0;
+
+    return [
+        'enabled' => $enabled,
+        'page' => $page,
+        'per_page' => $perPage,
+        'offset' => ($page - 1) * max(1, $perPage),
+    ];
+}
+
+function build_pagination_meta($page, $perPage, $total)
+{
+    $safePage = max(1, (int) $page);
+    $safePerPage = max(1, (int) $perPage);
+    $safeTotal = max(0, (int) $total);
+    $totalPages = (int) max(1, ceil($safeTotal / $safePerPage));
+
+    return [
+        'page' => $safePage,
+        'per_page' => $safePerPage,
+        'total' => $safeTotal,
+        'total_pages' => $totalPages,
+    ];
+}
+
+function get_csrf_token()
+{
+    if (!isset($_SESSION['csrf_token']) || !is_string($_SESSION['csrf_token']) || $_SESSION['csrf_token'] === '') {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf_token'];
+}
+
+function verify_csrf_token()
+{
+    $sessionToken = $_SESSION['csrf_token'] ?? '';
+    if (!is_string($sessionToken) || $sessionToken === '') {
+        return false;
+    }
+
+    $headerToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+    if (is_string($headerToken) && $headerToken !== '' && hash_equals($sessionToken, $headerToken)) {
+        return true;
+    }
+
+    $postedToken = $_POST['csrf_token'] ?? '';
+    if (is_string($postedToken) && $postedToken !== '' && hash_equals($sessionToken, $postedToken)) {
+        return true;
+    }
+
+    return false;
+}
+
+function enforce_csrf_for_write_actions($action)
+{
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        return;
+    }
+
+    $protectedActions = [
+        'add',
+        'bill_update',
+        'upload_bill',
+        'property_record_create',
+        'property_record_update',
+        'property_record_delete',
+    ];
+
+    if (!in_array($action, $protectedActions, true)) {
+        return;
+    }
+
+    if (!verify_csrf_token()) {
+        audit_log_event('csrf_rejected', ['action' => (string) $action]);
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Invalid or missing CSRF token.']);
+        exit;
+    }
+}
+
+function normalize_positive_int($value)
+{
+    $id = (int) $value;
+    return $id > 0 ? $id : 0;
+}
+
+function normalize_billing_period_value($value)
+{
+    $raw = trim((string) $value);
+    if ($raw === '') {
+        return '';
+    }
+
+    if (preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $raw)) {
+        return $raw;
+    }
+
+    if (preg_match('/^(\d{4})[\/-](0?[1-9]|1[0-2])$/', $raw, $match)) {
+        return sprintf('%04d-%02d', (int) $match[1], (int) $match[2]);
+    }
+
+    if (preg_match('/^(jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|sept|september|oct|october|nov|november|dec|december)\s+(\d{4})$/i', $raw, $match)) {
+        $monthToken = strtolower($match[1]);
+        $monthMap = [
+            'jan' => '01', 'january' => '01',
+            'feb' => '02', 'february' => '02',
+            'mar' => '03', 'march' => '03',
+            'apr' => '04', 'april' => '04',
+            'may' => '05',
+            'jun' => '06', 'june' => '06',
+            'jul' => '07', 'july' => '07',
+            'aug' => '08', 'august' => '08',
+            'sep' => '09', 'sept' => '09', 'september' => '09',
+            'oct' => '10', 'october' => '10',
+            'nov' => '11', 'november' => '11',
+            'dec' => '12', 'december' => '12',
+        ];
+        if (isset($monthMap[$monthToken])) {
+            return $match[2] . '-' . $monthMap[$monthToken];
+        }
+    }
+
+    return $raw;
+}
+
+function normalize_csv_payload($data)
+{
+    $fields = [
+        'bill_type',
+        'property_list_id',
+        'dd',
+        'property',
+        'billing_period',
+        'unit_owner',
+        'classification',
+        'deposit',
+        'rent',
+        'internet_provider',
+        'internet_account_no',
+        'wifi_amount',
+        'wifi_due_date',
+        'wifi_payment_status',
+        'water_account_no',
+        'water_amount',
+        'water_due_date',
+        'water_payment_status',
+        'electricity_account_no',
+        'electricity_amount',
+        'electricity_due_date',
+        'electricity_payment_status',
+        'association_dues',
+        'association_due_date',
+        'association_payment_status',
+        'real_property_tax',
+        'rpt_payment_status',
+        'penalty',
+        'per_property_status',
+    ];
+
+    $normalized = [];
+    foreach ($fields as $field) {
+        $value = $data[$field] ?? '';
+        $normalized[$field] = trim((string) $value);
+    }
+
+    $normalized['property_list_id'] = normalize_positive_int($data['property_list_id'] ?? 0);
+    $normalized['billing_period'] = normalize_billing_period_value($data['billing_period'] ?? '');
+
+    if ($normalized['bill_type'] === '') {
+        $normalized['bill_type'] = 'water';
+    }
+
+    return $normalized;
+}
+
+function normalize_property_record_payload($data)
+{
+    $fields = [
+        'dd',
+        'property',
+        'billing_period',
+        'unit_owner',
+        'classification',
+        'deposit',
+        'rent',
+        'per_property_status',
+        'real_property_tax',
+        'rpt_payment_status',
+        'penalty',
+    ];
+
+    $normalized = [];
+    foreach ($fields as $field) {
+        $normalized[$field] = trim((string) ($data[$field] ?? ''));
+    }
+    $normalized['property_list_id'] = normalize_positive_int($data['property_list_id'] ?? 0);
+    $normalized['billing_period'] = normalize_billing_period_value($data['billing_period'] ?? '');
+
+    return $normalized;
+}
+
+function respond_missing_migration_columns($missingColumns)
+{
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Database schema is not up to date. Run: php backend/tools/run_migrations.php',
+        'missing_columns' => array_values($missingColumns),
+    ]);
+    exit;
+}
+
+function table_exists($pdo, $tableName)
+{
+    static $checkedTables = [];
+    $key = trim((string) $tableName);
+    if ($key === '') {
+        return false;
+    }
+    if (array_key_exists($key, $checkedTables)) {
+        return $checkedTables[$key];
+    }
+
+    $stmt = $pdo->prepare(
+        "SELECT COUNT(*)
+         FROM information_schema.TABLES
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = ?"
+    );
+    $stmt->execute([$key]);
+    $exists = ((int) $stmt->fetchColumn()) > 0;
+    $checkedTables[$key] = $exists;
+    return $exists;
+}
+
+function table_column_exists($pdo, $tableName, $columnName)
+{
+    static $checkedColumns = [];
+    $cacheKey = $tableName . '.' . $columnName;
+    if (array_key_exists($cacheKey, $checkedColumns)) {
+        return $checkedColumns[$cacheKey];
+    }
+
+    $stmt = $pdo->prepare(
+        "SELECT COUNT(*) FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = ?
+           AND COLUMN_NAME = ?"
+    );
+    $stmt->execute([$tableName, $columnName]);
+    $exists = ((int) $stmt->fetchColumn()) > 0;
+    $checkedColumns[$cacheKey] = $exists;
+    return $exists;
+}
+
+function require_table_columns($pdo, $tableName, $requiredColumns)
+{
+    $missing = [];
+    foreach ($requiredColumns as $column) {
+        if (!table_column_exists($pdo, $tableName, $column)) {
+            $missing[] = $tableName . '.' . $column;
+        }
+    }
+
+    if ($missing) {
+        respond_missing_migration_columns($missing);
+    }
+}
+
+function login_rate_limit_available($pdo)
+{
+    return table_exists($pdo, 'login_attempts')
+        && table_column_exists($pdo, 'login_attempts', 'id')
+        && table_column_exists($pdo, 'login_attempts', 'username')
+        && table_column_exists($pdo, 'login_attempts', 'ip_address')
+        && table_column_exists($pdo, 'login_attempts', 'attempted_at')
+        && table_column_exists($pdo, 'login_attempts', 'success');
+}
+
+function cleanup_old_login_attempts($pdo)
+{
+    static $cleaned = false;
+    if ($cleaned) {
+        return;
+    }
+    $cleaned = true;
+
+    if (!login_rate_limit_available($pdo)) {
+        return;
+    }
+
+    $pdo->exec("DELETE FROM `login_attempts` WHERE `attempted_at` < DATE_SUB(NOW(), INTERVAL 7 DAY)");
+}
+
+function assess_login_rate_limit($pdo, $username, $ipAddress, $windowMinutes = 15, $maxAttempts = 5)
+{
+    $safeWindow = max(1, min(120, (int) $windowMinutes));
+    $safeMaxAttempts = max(1, min(100, (int) $maxAttempts));
+    $safeUsername = trim((string) $username);
+    $safeIp = trim((string) $ipAddress);
+
+    if (!login_rate_limit_available($pdo)) {
+        return [
+            'blocked' => false,
+            'attempt_count' => 0,
+            'retry_after_seconds' => 0,
+        ];
+    }
+
+    cleanup_old_login_attempts($pdo);
+
+    $stmt = $pdo->prepare(
+        "SELECT COUNT(*) AS attempt_count, MIN(`attempted_at`) AS first_attempt
+         FROM `login_attempts`
+         WHERE `success` = 0
+           AND `attempted_at` >= DATE_SUB(NOW(), INTERVAL {$safeWindow} MINUTE)
+           AND (
+                LOWER(TRIM(COALESCE(`username`, ''))) = LOWER(TRIM(?))
+                OR `ip_address` = ?
+           )"
+    );
+    $stmt->execute([$safeUsername, $safeIp]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+    $attemptCount = (int) ($row['attempt_count'] ?? 0);
+    if ($attemptCount < $safeMaxAttempts) {
+        return [
+            'blocked' => false,
+            'attempt_count' => $attemptCount,
+            'retry_after_seconds' => 0,
+        ];
+    }
+
+    $retryAfterSeconds = 60;
+    $firstAttempt = trim((string) ($row['first_attempt'] ?? ''));
+    if ($firstAttempt !== '') {
+        $firstTs = strtotime($firstAttempt);
+        if ($firstTs !== false) {
+            $elapsed = max(0, time() - $firstTs);
+            $windowSeconds = $safeWindow * 60;
+            $retryAfterSeconds = max(1, $windowSeconds - $elapsed);
+        }
+    }
+
+    return [
+        'blocked' => true,
+        'attempt_count' => $attemptCount,
+        'retry_after_seconds' => $retryAfterSeconds,
+    ];
+}
+
+function record_login_attempt($pdo, $username, $ipAddress, $success, $userAgent = '', $reason = '')
+{
+    if (!login_rate_limit_available($pdo)) {
+        return;
+    }
+
+    $hasUserAgent = table_column_exists($pdo, 'login_attempts', 'user_agent');
+    $hasReason = table_column_exists($pdo, 'login_attempts', 'reason');
+
+    if ($hasUserAgent && $hasReason) {
+        $stmt = $pdo->prepare(
+            "INSERT INTO `login_attempts` (`username`, `ip_address`, `success`, `user_agent`, `reason`)
+             VALUES (?, ?, ?, ?, ?)"
+        );
+        $stmt->execute([
+            trim((string) $username),
+            trim((string) $ipAddress),
+            $success ? 1 : 0,
+            substr(trim((string) $userAgent), 0, 255),
+            substr(trim((string) $reason), 0, 120),
+        ]);
+        return;
+    }
+
+    $stmt = $pdo->prepare(
+        "INSERT INTO `login_attempts` (`username`, `ip_address`, `success`)
+         VALUES (?, ?, ?)"
+    );
+    $stmt->execute([
+        trim((string) $username),
+        trim((string) $ipAddress),
+        $success ? 1 : 0,
+    ]);
+}
+
+function billing_column_exists($pdo, $columnName)
+{
+    return table_column_exists($pdo, 'property_billing_records', $columnName);
+}
+
+function require_billing_columns($pdo, $requiredColumns)
+{
+    require_table_columns($pdo, 'property_billing_records', $requiredColumns);
+}
+
+function ensure_bill_type_column($pdo)
+{
+    require_billing_columns($pdo, ['bill_type']);
+}
+
+function ensure_billing_visibility_column($pdo)
+{
+    require_billing_columns($pdo, ['is_hidden']);
+}
+
+function ensure_property_master_columns($pdo)
+{
+    require_table_columns($pdo, 'property_list', [
+        'id',
+        'dd',
+        'property',
+        'billing_period',
+        'unit_owner',
+        'classification',
+        'deposit',
+        'rent',
+        'per_property_status',
+        'real_property_tax',
+        'rpt_payment_status',
+        'penalty',
+    ]);
+}
+
+function ensure_billing_property_list_column($pdo)
+{
+    require_billing_columns($pdo, ['property_list_id']);
+}
+
+function find_property_list_by_id($pdo, $propertyListId)
+{
+    $id = normalize_positive_int($propertyListId);
+    if ($id <= 0) {
+        return null;
+    }
+
+    $stmt = $pdo->prepare(
+        "SELECT `id`, `dd`, `property`, `billing_period`, `unit_owner`, `classification`, `deposit`, `rent`,
+                `per_property_status`, `real_property_tax`, `rpt_payment_status`, `penalty`
+         FROM `property_list`
+         WHERE `id` = ?
+         LIMIT 1"
+    );
+    $stmt->execute([$id]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    return $row ?: null;
+}
+
+function find_property_list_by_identity($pdo, $dd, $property, $billingPeriod = '')
+{
+    $safeDd = trim((string) $dd);
+    $safeProperty = trim((string) $property);
+    $safeBillingPeriod = trim((string) $billingPeriod);
+    if ($safeDd === '' && $safeProperty === '') {
+        return null;
+    }
+
+    $stmt = $pdo->prepare(
+        "SELECT `id`, `dd`, `property`, `billing_period`, `unit_owner`, `classification`, `deposit`, `rent`,
+                `per_property_status`, `real_property_tax`, `rpt_payment_status`, `penalty`
+         FROM `property_list`
+         WHERE LOWER(TRIM(`dd`)) = LOWER(TRIM(?))
+           AND LOWER(TRIM(COALESCE(`property`, ''))) = LOWER(TRIM(?))
+           AND TRIM(COALESCE(`billing_period`, '')) = TRIM(?)
+         LIMIT 1"
+    );
+    $stmt->execute([$safeDd, $safeProperty, $safeBillingPeriod]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    return $row ?: null;
+}
+
+function upsert_property_master_from_payload($pdo, $normalized, $createWhenMissing = true)
+{
+    ensure_property_master_columns($pdo);
+
+    $propertyListId = normalize_positive_int($normalized['property_list_id'] ?? 0);
+    $dd = trim((string) ($normalized['dd'] ?? ''));
+    $property = trim((string) ($normalized['property'] ?? ''));
+    $billingPeriod = trim((string) ($normalized['billing_period'] ?? ''));
+    $unitOwner = trim((string) ($normalized['unit_owner'] ?? ''));
+    $classification = trim((string) ($normalized['classification'] ?? ''));
+    $deposit = trim((string) ($normalized['deposit'] ?? ''));
+    $rent = trim((string) ($normalized['rent'] ?? ''));
+    $perPropertyStatus = trim((string) ($normalized['per_property_status'] ?? ''));
+    $realPropertyTax = trim((string) ($normalized['real_property_tax'] ?? ''));
+    $rptPaymentStatus = trim((string) ($normalized['rpt_payment_status'] ?? ''));
+    $penalty = trim((string) ($normalized['penalty'] ?? ''));
+
+    $row = null;
+    if ($propertyListId > 0) {
+        $row = find_property_list_by_id($pdo, $propertyListId);
+        if (!$row) {
+            throw new RuntimeException('Selected property was not found in Property List.');
+        }
+    } else {
+        $row = find_property_list_by_identity($pdo, $dd, $property, $billingPeriod);
+    }
+
+    if (!$row && !$createWhenMissing) {
+        return null;
+    }
+
+    if (!$row) {
+        if ($dd === '' && $property === '') {
+            return null;
+        }
+
+        $insertStmt = $pdo->prepare(
+            "INSERT INTO `property_list` (
+                `dd`, `property`, `billing_period`, `unit_owner`, `classification`, `deposit`, `rent`,
+                `per_property_status`, `real_property_tax`, `rpt_payment_status`, `penalty`
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        );
+        $insertStmt->execute([
+            $dd,
+            $property,
+            $billingPeriod,
+            $unitOwner,
+            $classification,
+            $deposit,
+            $rent,
+            $perPropertyStatus,
+            $realPropertyTax,
+            $rptPaymentStatus,
+            $penalty,
+        ]);
+        $newId = (int) $pdo->lastInsertId();
+        return find_property_list_by_id($pdo, $newId);
+    }
+
+    $nextDd = $dd !== '' ? $dd : (string) ($row['dd'] ?? '');
+    $nextProperty = $property !== '' ? $property : (string) ($row['property'] ?? '');
+    $nextBillingPeriod = $billingPeriod !== '' ? $billingPeriod : (string) ($row['billing_period'] ?? '');
+    $nextUnitOwner = $unitOwner !== '' ? $unitOwner : (string) ($row['unit_owner'] ?? '');
+    $nextClassification = $classification !== '' ? $classification : (string) ($row['classification'] ?? '');
+    $nextDeposit = $deposit !== '' ? $deposit : (string) ($row['deposit'] ?? '');
+    $nextRent = $rent !== '' ? $rent : (string) ($row['rent'] ?? '');
+    $nextPerPropertyStatus = $perPropertyStatus !== '' ? $perPropertyStatus : (string) ($row['per_property_status'] ?? '');
+    $nextRealPropertyTax = $realPropertyTax !== '' ? $realPropertyTax : (string) ($row['real_property_tax'] ?? '');
+    $nextRptPaymentStatus = $rptPaymentStatus !== '' ? $rptPaymentStatus : (string) ($row['rpt_payment_status'] ?? '');
+    $nextPenalty = $penalty !== '' ? $penalty : (string) ($row['penalty'] ?? '');
+
+    $hasChanges = $nextDd !== (string) ($row['dd'] ?? '')
+        || $nextProperty !== (string) ($row['property'] ?? '')
+        || $nextBillingPeriod !== (string) ($row['billing_period'] ?? '')
+        || $nextUnitOwner !== (string) ($row['unit_owner'] ?? '')
+        || $nextClassification !== (string) ($row['classification'] ?? '')
+        || $nextDeposit !== (string) ($row['deposit'] ?? '')
+        || $nextRent !== (string) ($row['rent'] ?? '')
+        || $nextPerPropertyStatus !== (string) ($row['per_property_status'] ?? '')
+        || $nextRealPropertyTax !== (string) ($row['real_property_tax'] ?? '')
+        || $nextRptPaymentStatus !== (string) ($row['rpt_payment_status'] ?? '')
+        || $nextPenalty !== (string) ($row['penalty'] ?? '');
+
+    if ($hasChanges) {
+        $updateStmt = $pdo->prepare(
+            "UPDATE `property_list`
+             SET `dd` = ?, `property` = ?, `billing_period` = ?, `unit_owner` = ?, `classification` = ?, `deposit` = ?, `rent` = ?,
+                 `per_property_status` = ?, `real_property_tax` = ?, `rpt_payment_status` = ?, `penalty` = ?
+             WHERE `id` = ?"
+        );
+        $updateStmt->execute([
+            $nextDd,
+            $nextProperty,
+            $nextBillingPeriod,
+            $nextUnitOwner,
+            $nextClassification,
+            $nextDeposit,
+            $nextRent,
+            $nextPerPropertyStatus,
+            $nextRealPropertyTax,
+            $nextRptPaymentStatus,
+            $nextPenalty,
+            (int) $row['id'],
+        ]);
+    }
+
+    return find_property_list_by_id($pdo, (int) $row['id']);
+}
+
+function apply_property_master_to_payload($normalized, $propertyRow)
+{
+    if (!$propertyRow || !is_array($propertyRow)) {
+        return $normalized;
+    }
+
+    $next = $normalized;
+    $next['property_list_id'] = (int) ($propertyRow['id'] ?? 0);
+    $next['dd'] = trim((string) ($propertyRow['dd'] ?? ''));
+    $next['property'] = trim((string) ($propertyRow['property'] ?? ''));
+    $next['billing_period'] = trim((string) ($propertyRow['billing_period'] ?? ''));
+    $next['unit_owner'] = trim((string) ($propertyRow['unit_owner'] ?? ''));
+    $next['classification'] = trim((string) ($propertyRow['classification'] ?? ''));
+    $next['deposit'] = trim((string) ($propertyRow['deposit'] ?? ''));
+    $next['rent'] = trim((string) ($propertyRow['rent'] ?? ''));
+    $next['per_property_status'] = trim((string) ($propertyRow['per_property_status'] ?? ''));
+    $next['real_property_tax'] = trim((string) ($propertyRow['real_property_tax'] ?? ''));
+    $next['rpt_payment_status'] = trim((string) ($propertyRow['rpt_payment_status'] ?? ''));
+    $next['penalty'] = trim((string) ($propertyRow['penalty'] ?? ''));
+
+    return $next;
+}
+
+function resolve_bill_property_master($pdo, $normalized, $createWhenMissing = true)
+{
+    ensure_property_master_columns($pdo);
+    ensure_billing_property_list_column($pdo);
+
+    $propertyRow = upsert_property_master_from_payload($pdo, $normalized, $createWhenMissing);
+    if (!$propertyRow) {
+        return $normalized;
+    }
+
+    return apply_property_master_to_payload($normalized, $propertyRow);
+}
+
+function billing_identity_exists($pdo, $normalized, $excludeId = 0)
+{
+    ensure_bill_type_column($pdo);
+    ensure_billing_visibility_column($pdo);
+    ensure_billing_property_list_column($pdo);
+    require_billing_columns($pdo, ['billing_period']);
+
+    $propertyListId = normalize_positive_int($normalized['property_list_id'] ?? 0);
+    $billType = trim((string) ($normalized['bill_type'] ?? 'water'));
+    $billingPeriod = trim((string) ($normalized['billing_period'] ?? ''));
+
+    if ($propertyListId > 0) {
+        $sql = "SELECT `id` FROM `property_billing_records`
+                WHERE `property_list_id` = ?
+                  AND LOWER(TRIM(COALESCE(`bill_type`, 'water'))) = LOWER(TRIM(?))
+                  AND TRIM(COALESCE(`billing_period`, '')) = TRIM(?)
+                  AND `is_hidden` = 0";
+        $params = [$propertyListId, $billType, $billingPeriod];
+    } else {
+        $sql = "SELECT `id` FROM `property_billing_records`
+                WHERE LOWER(TRIM(`dd`)) = LOWER(TRIM(?))
+                  AND LOWER(TRIM(COALESCE(`property`, ''))) = LOWER(TRIM(?))
+                  AND LOWER(TRIM(COALESCE(`bill_type`, 'water'))) = LOWER(TRIM(?))
+                  AND TRIM(COALESCE(`billing_period`, '')) = TRIM(?)
+                  AND `is_hidden` = 0";
+        $params = [
+            trim((string) ($normalized['dd'] ?? '')),
+            trim((string) ($normalized['property'] ?? '')),
+            $billType,
+            $billingPeriod,
+        ];
+    }
+
+    if ($excludeId > 0) {
+        $sql .= " AND `id` <> ?";
+        $params[] = $excludeId;
+    }
+
+    $sql .= ' LIMIT 1';
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    return (bool) $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
+function hide_duplicate_active_bills($pdo)
+{
+    ensure_billing_property_list_column($pdo);
+    ensure_bill_type_column($pdo);
+    ensure_billing_visibility_column($pdo);
+    require_billing_columns($pdo, ['billing_period']);
+
+    $sql = "UPDATE `property_billing_records` AS t
+            INNER JOIN (
+                SELECT
+                    CASE
+                        WHEN COALESCE(`property_list_id`, 0) > 0 THEN CAST(`property_list_id` AS CHAR)
+                        ELSE CONCAT('legacy:', LOWER(TRIM(`dd`)), '|', LOWER(TRIM(COALESCE(`property`, ''))))
+                    END AS identity_key,
+                    LOWER(TRIM(COALESCE(`bill_type`, 'water'))) AS bill_type_key,
+                    TRIM(COALESCE(`billing_period`, '')) AS billing_period_key,
+                    MAX(`id`) AS keep_id
+                FROM `property_billing_records`
+                WHERE `is_hidden` = 0
+                GROUP BY
+                    CASE
+                        WHEN COALESCE(`property_list_id`, 0) > 0 THEN CAST(`property_list_id` AS CHAR)
+                        ELSE CONCAT('legacy:', LOWER(TRIM(`dd`)), '|', LOWER(TRIM(COALESCE(`property`, ''))))
+                    END,
+                    LOWER(TRIM(COALESCE(`bill_type`, 'water'))),
+                    TRIM(COALESCE(`billing_period`, ''))
+                HAVING COUNT(*) > 1
+            ) AS d
+              ON (
+                    CASE
+                        WHEN COALESCE(t.`property_list_id`, 0) > 0 THEN CAST(t.`property_list_id` AS CHAR)
+                        ELSE CONCAT('legacy:', LOWER(TRIM(t.`dd`)), '|', LOWER(TRIM(COALESCE(t.`property`, ''))))
+                    END
+                 ) = d.identity_key
+             AND LOWER(TRIM(COALESCE(t.`bill_type`, 'water'))) = d.bill_type_key
+             AND TRIM(COALESCE(t.`billing_period`, '')) = d.billing_period_key
+             AND t.`id` <> d.keep_id
+            SET t.`is_hidden` = 1
+            WHERE t.`is_hidden` = 0";
+
+    return $pdo->exec($sql);
+}
+
+function hide_duplicate_active_bills_for_identity($pdo, $propertyListId, $dd, $property, $billType, $billingPeriod, $keepId)
+{
+    ensure_billing_property_list_column($pdo);
+    ensure_bill_type_column($pdo);
+    ensure_billing_visibility_column($pdo);
+    require_billing_columns($pdo, ['billing_period']);
+
+    $identityId = normalize_positive_int($propertyListId);
+    if ($identityId > 0) {
+        $stmt = $pdo->prepare(
+            "UPDATE `property_billing_records`
+             SET `is_hidden` = 1
+             WHERE `is_hidden` = 0
+               AND `id` <> ?
+               AND `property_list_id` = ?
+               AND LOWER(TRIM(COALESCE(`bill_type`, 'water'))) = LOWER(TRIM(?))
+               AND TRIM(COALESCE(`billing_period`, '')) = TRIM(?)"
+        );
+        $stmt->execute([$keepId, $identityId, $billType, $billingPeriod]);
+        return $stmt->rowCount();
+    }
+
+    $stmt = $pdo->prepare(
+        "UPDATE `property_billing_records`
+         SET `is_hidden` = 1
+         WHERE `is_hidden` = 0
+           AND `id` <> ?
+           AND LOWER(TRIM(`dd`)) = LOWER(TRIM(?))
+           AND LOWER(TRIM(COALESCE(`property`, ''))) = LOWER(TRIM(?))
+           AND LOWER(TRIM(COALESCE(`bill_type`, 'water'))) = LOWER(TRIM(?))
+           AND TRIM(COALESCE(`billing_period`, '')) = TRIM(?)"
+    );
+    $stmt->execute([$keepId, $dd, $property, $billType, $billingPeriod]);
+    return $stmt->rowCount();
+}
+
+function sync_property_master_to_billing_rows($pdo, $normalized)
+{
+    ensure_billing_property_list_column($pdo);
+    ensure_billing_visibility_column($pdo);
+
+    $resolved = resolve_bill_property_master($pdo, $normalized, true);
+    $propertyListId = normalize_positive_int($resolved['property_list_id'] ?? 0);
+    if ($propertyListId <= 0) {
+        return null;
+    }
+
+    $syncStmt = $pdo->prepare(
+        "UPDATE `property_billing_records`
+         SET `dd` = ?, `property` = ?, `unit_owner` = ?, `classification` = ?, `deposit` = ?, `rent` = ?,
+             `per_property_status` = ?, `real_property_tax` = ?, `rpt_payment_status` = ?, `penalty` = ?
+         WHERE `property_list_id` = ?
+           AND `is_hidden` = 0"
+    );
+    $syncStmt->execute([
+        $resolved['dd'],
+        $resolved['property'],
+        $resolved['unit_owner'],
+        $resolved['classification'],
+        $resolved['deposit'],
+        $resolved['rent'],
+        $resolved['per_property_status'],
+        $resolved['real_property_tax'],
+        $resolved['rpt_payment_status'],
+        $resolved['penalty'],
+        $propertyListId,
+    ]);
+
+    return $resolved;
+}
+
+function parse_boolean_config($value, $default = false)
+{
+    if (!is_string($value)) {
+        return $default;
+    }
+    $normalized = strtolower(trim($value));
+    if ($normalized === '1' || $normalized === 'true' || $normalized === 'yes' || $normalized === 'on') {
+        return true;
+    }
+    if ($normalized === '0' || $normalized === 'false' || $normalized === 'no' || $normalized === 'off') {
+        return false;
+    }
+    return $default;
+}
+
+function build_mock_bill_upload_response($billType, $dd, $property, $billingPeriod = '')
+{
+    $type = trim((string) $billType);
+    if ($type === 'wifi') {
+        $type = 'internet';
+    }
+    if (!in_array($type, API_BILL_TYPES, true)) {
+        $type = 'water';
+    }
+
+    $safeDd = trim((string) $dd);
+    $safeProperty = trim((string) $property);
+    $safeBillingPeriod = trim((string) $billingPeriod);
+
+    $base = [
+        'bill_type' => $type,
+        'property_list_id' => 0,
+        'dd' => $safeDd,
+        'property' => $safeProperty,
+        'billing_period' => $safeBillingPeriod,
+        'unit_owner' => '',
+        'classification' => '',
+        'deposit' => '',
+        'rent' => '',
+        'internet_provider' => '',
+        'internet_account_no' => '',
+        'wifi_amount' => '',
+        'wifi_due_date' => '',
+        'wifi_payment_status' => '',
+        'water_account_no' => '',
+        'water_amount' => '',
+        'water_due_date' => '',
+        'water_payment_status' => '',
+        'electricity_account_no' => '',
+        'electricity_amount' => '',
+        'electricity_due_date' => '',
+        'electricity_payment_status' => '',
+        'association_dues' => '',
+        'association_due_date' => '',
+        'association_payment_status' => '',
+        'real_property_tax' => '',
+        'rpt_payment_status' => '',
+        'penalty' => '',
+        'per_property_status' => '',
+    ];
+
+    if ($type === 'internet') {
+        $base['internet_provider'] = 'Mock ISP';
+        $base['internet_account_no'] = 'INT-MOCK-001';
+        $base['wifi_amount'] = '1899.00';
+        $base['wifi_due_date'] = date('Y-m-d', strtotime('+10 days'));
+        $base['wifi_payment_status'] = 'Unpaid';
+    } elseif ($type === 'electricity') {
+        $base['electricity_account_no'] = 'ELEC-MOCK-001';
+        $base['electricity_amount'] = '3250.75';
+        $base['electricity_due_date'] = date('Y-m-d', strtotime('+12 days'));
+        $base['electricity_payment_status'] = 'Unpaid';
+    } elseif ($type === 'association_dues') {
+        $base['association_dues'] = '2500.00';
+        $base['association_due_date'] = date('Y-m-d', strtotime('+15 days'));
+        $base['association_payment_status'] = 'Unpaid';
+    } else {
+        $base['water_account_no'] = 'WTR-MOCK-001';
+        $base['water_amount'] = '780.25';
+        $base['water_due_date'] = date('Y-m-d', strtotime('+9 days'));
+        $base['water_payment_status'] = 'Unpaid';
+    }
+
+    return [
+        'success' => true,
+        'message' => 'Mock upload mode enabled. Sample data returned.',
+        'data' => $base,
+    ];
+}
+
