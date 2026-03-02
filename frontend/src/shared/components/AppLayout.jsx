@@ -166,44 +166,45 @@ export default function AppLayout({
       </aside>
 
       <section className={`shell-content ${contentClassName}`.trim()}>
+        <header ref={headerRef} className="shell-header">
+          <div className="shell-header-title">
+            <button type="button" className="shell-menu-btn" onClick={toggleSidebar} aria-label="Toggle menu">
+              <span />
+              <span />
+              <span />
+            </button>
+            <h1>{title}</h1>
+            <p className="shell-subtitle">{subtitle}</p>
+          </div>
+          <div className="header-actions">
+            <button
+              type="button"
+              className="btn btn-theme btn-secondary"
+              onClick={toggleTheme}
+              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {theme === 'dark' ? (
+                <>
+                  <svg className="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="4" />
+                    <path strokeLinecap="round" d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32 1.41-1.41" />
+                  </svg>
+                  <span>Light</span>
+                </>
+              ) : (
+                <>
+                  <svg className="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z" />
+                  </svg>
+                  <span>Dark</span>
+                </>
+              )}
+            </button>
+          </div>
+        </header>
+
         <div key={`${location.pathname}${location.search}`} className="route-transition-layer">
-          <header ref={headerRef} className="shell-header">
-            <div className="shell-header-title">
-              <button type="button" className="shell-menu-btn" onClick={toggleSidebar} aria-label="Toggle menu">
-                <span />
-                <span />
-                <span />
-              </button>
-              <h1>{title}</h1>
-              <p className="shell-subtitle">{subtitle}</p>
-            </div>
-            <div className="header-actions">
-              <button
-                type="button"
-                className="btn btn-theme btn-secondary"
-                onClick={toggleTheme}
-                aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-                title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-              >
-                {theme === 'dark' ? (
-                  <>
-                    <svg className="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <circle cx="12" cy="12" r="4" />
-                      <path strokeLinecap="round" d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32 1.41-1.41" />
-                    </svg>
-                    <span>Light</span>
-                  </>
-                ) : (
-                  <>
-                    <svg className="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z" />
-                    </svg>
-                    <span>Dark</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </header>
           <div
             className="route-transition-content"
             style={isLockScrollLayout && lockContentHeight !== null ? { height: `${lockContentHeight}px` } : undefined}

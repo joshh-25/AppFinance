@@ -809,9 +809,24 @@ Goal: Implement critical stability mechanisms from the Suggestions document that
 - Header text ("WiFi Bills" → "Water Bills") updates **instantly and silently**
 
 **Implementation:**
-- [ ] Merge 4 bill routes into one: `/bills/:billType` in `App.jsx`
-- [ ] `PaymentFormPage` reads `billMode` from `useParams()` instead of props
-- [ ] Wrap module-specific fields in `<div className="fields-section">` with CSS animation triggered on `billMode` change
-- [ ] Add `@keyframes fieldsSlideIn` (opacity 0→1, translateY 10px→0) to global CSS
-- [ ] Old URLs (`/bills/water`, `/bills/wifi`, etc.) redirect to new param route
-- [ ] Run `npm.cmd run test -- --run` — all 11 tests still pass
+- [x] Merge 4 bill routes into one: `/bills/:billType` in `App.jsx`
+- [x] `PaymentFormPage` reads `billMode` from `useParams()` instead of props
+- [x] Wrap module-specific fields in `<div className="fields-section">` with CSS animation triggered on `billMode` change
+- [x] Add `@keyframes fieldsSlideIn` (opacity 0→1, translateY 10px→0) to global CSS
+- [x] Old URLs (`/bills/water`, `/bills/wifi`, etc.) redirect to new param route
+- [x] Run `npm.cmd run test -- --run` — all 11 tests still pass
+
+---
+
+## Task 26 — Persistent Header Layout (Anti-Flash)
+
+**Problem:** Navigation between pages causes the Application Header (Title, Subtitle, and Dark Toggle Button) to visually flash/remount.
+
+**Goal:**
+- Separate the header from the page content so the Header persists exactly like the Sidebar.
+- Dark mode button stays interactive without flashing during route transitions.
+
+**Implementation:**
+- [ ] In `AppLayout.jsx`, move `<header className="shell-header">` outside of `<div key={location.pathname + search} className="route-transition-layer">`.
+- [ ] Keep only the `<div className="route-transition-content">` inside the keyed route transition layer.
+- [ ] Run `npm.cmd run test -- --run` to verify UI shell tests still pass.
