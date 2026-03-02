@@ -363,4 +363,85 @@ describe('Billing flow integration coverage', () => {
         expect(fetchPropertyRecords).toBeDefined();
         expect(uploadBill).toBeDefined();
     });
+
+    it('editing a February bill does not alter the January bill for the same property', async () => {
+        // Seed two water bills for the SAME property but DIFFERENT billing months
+        mockBills = [
+            {
+                id: 301,
+                dd: '24 LPS 9PQ',
+                property: 'Lafayette',
+                bill_type: 'water',
+                billing_period: '2025-01',
+                water_account_no: 'WTR-001',
+                water_amount: '800',
+                water_due_date: '2025-01-28',
+                water_payment_status: 'Unpaid'
+            },
+            {
+                id: 302,
+                dd: '24 LPS 9PQ',
+                property: 'Lafayette',
+                bill_type: 'water',
+                billing_period: '2025-02',
+                water_account_no: 'WTR-001',
+                water_amount: '950',
+                water_due_date: '2025-02-28',
+                water_payment_status: 'Unpaid'
+            }
+        ];
+
+        // Set edit context pointing ONLY at the February record (id 302)
+        window.sessionStorage.setItem('finance:records-edit-context', JSON.stringify({
+            dd: '24 LPS 9PQ',
+            property: 'Lafayette',
+            bill_type: 'water',
+            editing_bill_id: 302,
+            water_bill_id: 302,
+            electricity_bill_id: null,
+            internet_bill_id: null,
+            association_bill_id: null,
+            water_account_no: 'WTR-001',
+            water_amount: '950',
+            water_due_date: '2025-02-28',
+            water_payment_status: 'Unpaid',
+            billing_period: '2025-02'
+        }));
+
+        // Open the payment form in edit mode — February record loads
+        const paymentView = renderWithProviders(<WaterBillsPage />, ['/bills/water']);
+
+        const waterAmountInput = await screen.findByLabelText('Water');
+        await waitFor(() => {
+            expect(waterAmountInput).toHaveValue('950');
+        });
+
+        // Change ONLY the February amount to 1100
+        fireEvent.change(waterAmountInput, { target: { value: '1100' } });
+
+        const form = paymentView.container.querySelector('#payment-form');
+        expect(form).not.toBeNull();
+        fireEvent.submit(form);
+
+        await waitFor(() => {
+            expect(updateBill).toHaveBeenCalledTimes(1);
+        });
+
+        paymentView.unmount();
+
+        // January record in the data store must be completely untouched
+        const januaryRecord = mockBills.find((row) => Number(row.id) === 301);
+        expect(januaryRecord).toBeDefined();
+        expect(januaryRecord.water_amount).toBe('800');
+        expect(januaryRecord.billing_period).toBe('2025-01');
+
+        // February record must reflect the new amount
+        const februaryRecord = mockBills.find((row) => Number(row.id) === 302);
+        expect(februaryRecord).toBeDefined();
+        expect(String(februaryRecord.water_amount)).toBe('1100');
+
+        // updateBill must have been called exactly once — only for February (id 302)
+        expect(updateBill).toHaveBeenCalledTimes(1);
+        expect(updateBill.mock.calls[0][0]).toBe(302);
+    });
 });
