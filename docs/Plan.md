@@ -845,16 +845,14 @@ Goal: Implement critical stability mechanisms from the Suggestions document that
 
 ---
 
-## Task 28 — Persistent Layout for Records & Property Records
+## Task 28 — Persistent Layout for Records & Property Records (Refined)
 
-**Problem:** Navigation within "Records" and "Property Records" causes the entire white card to re-render.
+**Problem:** Navigation within "Records" and "Property Records" causes the entire white card to "flash" or animate even with stable keys. This is due to split routes and global transitions in the layout.
 
-**Goal:** Keep the outer card container (background and borders) completely frozen while only the inner data/table content updates smoothly. Approved by user.
+**Goal:** Keep the outer card container (background and borders) completely frozen while only the inner data/table content updates smoothly.
 
 **Implementation:**
-- [x] In `AppLayout.jsx`, update the `transitionKey` logic:
-    - If path starts with `/records`, use `"records-module"`.
-    - If path starts with `/property-records`, use `"property-records-module"`.
-- [x] In `RecordsPage.jsx`, implement a `fieldsAnimating` state.
-- [x] In `PropertyRecordsPage.jsx`, implement a `fieldsAnimating` state.
-- [x] Wrap the inner content of these pages in `<div className="bill-fields-region">`.
+- [x] In `App.jsx`, consolidate `/property-records` and `/property-records/list` into a single route to prevent remounting.
+- [x] In `AppLayout.jsx`, update the `transitionKey` logic and add a `no-module-transition` class for stable modules (Bills, Records, Property Records).
+- [x] In `styles.css`, add CSS to disable global animations when the `no-module-transition` class is present.
+- [x] Ensure internal animations in `RecordsPage.jsx` and `PropertyRecordsPage.jsx` are correctly scoped to the inner content.

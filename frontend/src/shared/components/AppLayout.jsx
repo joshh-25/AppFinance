@@ -205,6 +205,7 @@ export default function AppLayout({
         </header>
 
         {/* Stable keys for modules ensures the outer card container stays permanently mounted during sub-navigation */}
+        {/* The 'no-transition' class is added for stable modules to disable global fade-in animations that would move the card */}
         <div
           key={
             location.pathname.startsWith('/bills/') ? 'bills-module' :
@@ -212,7 +213,10 @@ export default function AppLayout({
                 location.pathname.startsWith('/property-records') ? 'property-records-module' :
                   `${location.pathname}${location.search}`
           }
-          className="route-transition-layer"
+          className={`route-transition-layer ${(location.pathname.startsWith('/bills/') ||
+              location.pathname.startsWith('/records') ||
+              location.pathname.startsWith('/property-records')) ? 'no-transition' : ''
+            }`.trim()}
         >
           <div
             className="route-transition-content"

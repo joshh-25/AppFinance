@@ -70,15 +70,7 @@ function AppRoutes() {
         )}
       />
       <Route
-        path="/property-records"
-        element={(
-          <ProtectedRoute>
-            <PropertyRecordsPage />
-          </ProtectedRoute>
-        )}
-      />
-      <Route
-        path="/property-records/list"
+        path="/property-records/*"
         element={(
           <ProtectedRoute>
             <PropertyRecordsPage />
