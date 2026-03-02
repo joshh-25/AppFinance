@@ -759,15 +759,21 @@ Validation:
 - [x] `npm.cmd run build` (in `frontend/`)
 - [x] Manual: light-mode muted text visibly lighter, Dashboard 5th KPI card present, Login page no dead link
 
-## Proposed Next Task (Pending Approval): Git Repository Setup
+## Task 19: Git Repository Setup
 Goal: Provide version control for the project so we don't lose configuration or code history again, and push it to GitHub.
 
-- [ ] Add extensive `.gitignore` to the project root blocking XAMPP/Windows artifacts, `node_modules`, builds, and DB dumps.
-- [ ] Initialize git repository (`git init`)
-- [ ] Stage all existing app files and configuration (`git add .`)
-- [ ] Create initial application baseline commit (`git commit -m "Initial commit"`).
-- [ ] Create remote repository and push baseline (`git remote add origin ...` and `git push`).
+- [x] Add extensive `.gitignore` to the project root blocking XAMPP/Windows artifacts, `node_modules`, builds, and DB dumps.
+- [x] Initialize git repository (`git init`)
+- [x] Stage all existing app files and configuration (`git add .`)
+- [x] Create initial application baseline commit (`git commit -m "Initial commit"`).
+- [x] Create remote repository and push baseline (`git remote add origin ...` and `git push`).
 
 Validation:
-- [ ] `git status` shows working tree clean as a baseline.
-- [ ] Code is visible on the GitHub remote.
+- [x] `git status` shows working tree clean as a baseline.
+
+## Task 20: Application Stability & Resilience
+Goal: Implement critical stability mechanisms from the Suggestions document that protect the app from crashing and ensure database integrity.
+
+- [x] Add React `ErrorBoundary` specifically to catch UI render crashes (Suggestion #3).
+- [x] Wrap `App.jsx` child routes in the boundary so the sidebar remains functional upon a crash.
+- [x] Run the SQL Database migrations (`setup/run_migrations.php`) to ensure table schemas match the codebase (Suggestion #2).

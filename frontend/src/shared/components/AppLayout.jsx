@@ -4,6 +4,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { getStoredSessionUsername } from '../lib/auth.js';
+import ErrorBoundary from './ErrorBoundary.jsx';
 
 const THEME_KEY = 'finance-theme';
 
@@ -207,7 +208,9 @@ export default function AppLayout({
             className="route-transition-content"
             style={isLockScrollLayout && lockContentHeight !== null ? { height: `${lockContentHeight}px` } : undefined}
           >
-            {children}
+            <ErrorBoundary>
+              {children}
+            </ErrorBoundary>
           </div>
         </div>
       </section>
