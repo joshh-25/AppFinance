@@ -6,10 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
 import LoginPage from '../features/auth/LoginPage.jsx';
 import DashboardPage from '../features/dashboard/DashboardPage.jsx';
-import WaterBillsPage from '../features/bills/WaterBillsPage.jsx';
-import ElectricityBillsPage from '../features/bills/ElectricityBillsPage.jsx';
-import WifiBillsPage from '../features/bills/WifiBillsPage.jsx';
-import AssociationBillsPage from '../features/bills/AssociationBillsPage.jsx';
+import PaymentFormPage from '../features/bills/PaymentFormPage.jsx';
 import PropertyRecordsPage from '../features/property/PropertyRecordsPage.jsx';
 import RecordsPage from '../features/bills/RecordsPage.jsx';
 import { checkSession } from '../shared/lib/auth.js';
@@ -51,70 +48,19 @@ function AppRoutes() {
           </ProtectedRoute>
         )}
       />
+
+      {/* Single persistent bill route — no re-mount when switching tabs */}
       <Route
-        path="/bills/water"
+        path="/bills/:billType"
         element={(
           <ProtectedRoute>
-            <WaterBillsPage />
+            <PaymentFormPage />
           </ProtectedRoute>
         )}
       />
-      <Route
-        path="/bills/water/list"
-        element={(
-          <ProtectedRoute>
-            <WaterBillsPage />
-          </ProtectedRoute>
-        )}
-      />
-      <Route
-        path="/bills/electricity"
-        element={(
-          <ProtectedRoute>
-            <ElectricityBillsPage />
-          </ProtectedRoute>
-        )}
-      />
-      <Route
-        path="/bills/electricity/list"
-        element={(
-          <ProtectedRoute>
-            <ElectricityBillsPage />
-          </ProtectedRoute>
-        )}
-      />
-      <Route
-        path="/bills/wifi"
-        element={(
-          <ProtectedRoute>
-            <WifiBillsPage />
-          </ProtectedRoute>
-        )}
-      />
-      <Route
-        path="/bills/wifi/list"
-        element={(
-          <ProtectedRoute>
-            <WifiBillsPage />
-          </ProtectedRoute>
-        )}
-      />
-      <Route
-        path="/bills/association"
-        element={(
-          <ProtectedRoute>
-            <AssociationBillsPage />
-          </ProtectedRoute>
-        )}
-      />
-      <Route
-        path="/bills/association/list"
-        element={(
-          <ProtectedRoute>
-            <AssociationBillsPage />
-          </ProtectedRoute>
-        )}
-      />
+      {/* /bills with no type → default to water */}
+      <Route path="/bills" element={<Navigate to="/bills/water" replace />} />
+
       <Route
         path="/records"
         element={(

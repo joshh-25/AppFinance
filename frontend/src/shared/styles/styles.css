@@ -2179,3 +2179,33 @@ tbody tr:hover {
     scroll-behavior: auto !important;
   }
 }
+/* ====================================================
+   Bill Tab Transition — Task 25
+   Only the fields section slides in when switching tabs.
+   The AppLayout card / header stays completely stable.
+   ==================================================== */
+.bill-fields-region {
+  /* No animation by default */
+}
+
+.bill-fields-region.bill-fields-animating {
+  animation: billFieldsSlideIn 220ms cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+@keyframes billFieldsSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Respect reduced-motion user preference */
+@media (prefers-reduced-motion: reduce) {
+  .bill-fields-region.bill-fields-animating {
+    animation: none;
+  }
+}

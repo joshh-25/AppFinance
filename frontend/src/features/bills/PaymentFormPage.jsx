@@ -3,7 +3,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import AppLayout from '../../shared/components/AppLayout.jsx';
 import Toast from '../../shared/components/Toast.jsx';
 import PaymentForm from '../../shared/components/PaymentForm.jsx';
@@ -985,11 +985,30 @@ function toFriendlyErrorMessage(rawMessage) {
   return message || 'Request failed. Please try again.';
 }
 
-export default function PaymentFormPage({ billMode = 'water' }) {
+export default function PaymentFormPage({ billMode: billModeProp } = {}) {
+  const { billType: urlBillType } = useParams();
+  // Prop takes priority (used by integration test stub wrappers).
+  // URL param is used when rendered directly by the router.
+  const rawBillMode = billModeProp || urlBillType || 'water';
+  const billMode = BILL_FLOW_MODES.includes(rawBillMode) ? rawBillMode : 'water';
   const location = useLocation();
   const navigate = useNavigate();
+  // Track when bill type changes to trigger fields animation
+  const [fieldsAnimating, setFieldsAnimating] = useState(false);
+  const prevBillModeRef = useRef(billMode);
   const fromPropertyRecordsNext = location.state?.fromPropertyRecordsNext === true;
   const isListRoute = location.pathname.endsWith('/list');
+
+  // Trigger slide-fade animation ONLY on the fields section when bill type changes.
+  // The card container / AppLayout never re-mounts, so no background flash.
+  useEffect(() => {
+    if (prevBillModeRef.current !== billMode) {
+      prevBillModeRef.current = billMode;
+      setFieldsAnimating(true);
+      const timer = window.setTimeout(() => setFieldsAnimating(false), 220);
+      return () => window.clearTimeout(timer);
+    }
+  }, [billMode]);
   const [form, setForm] = useState(INITIAL_FORM);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -1913,61 +1932,66 @@ export default function PaymentFormPage({ billMode = 'water' }) {
     >
       <Toast toasts={toasts} onDismiss={removeToast} />
 
-      <PaymentForm
-        panelMode={panelMode}
-        formModeLabel={formModeLabel}
-        isEditMode={isEditMode}
-        comboSearch={comboSearch}
-        onComboChange={handleComboInputChange}
-        onComboFocus={() => setIsComboDropdownOpen(true)}
-        onComboBlur={() => {
-          window.setTimeout(() => setIsComboDropdownOpen(false), 120);
-        }}
-        loadingPropertyRecords={loadingPropertyRecords}
-        filteredPropertyOptions={filteredPropertyOptions}
-        isComboDropdownOpen={isComboDropdownOpen}
-        getPropertyRecordLabel={getPropertyRecordLabel}
-        onOptionSelect={handleOptionSelect}
-        form={form}
-        onUpdateField={updateField}
-        activeBillType={activeBillType}
-        allTypeFields={ALL_TYPE_FIELDS}
-        billTypeFields={BILL_TYPE_FIELDS}
-        onSubmit={handleSubmit}
-        tableSearch={tableSearch}
-        onTableSearchChange={handleTableSearchChange}
-        onBackToForm={handleBackToForm}
-        onRefresh={() => refetchBillRows()}
-        loadingBillRows={loadingBillRows}
-        isBillRowsError={isBillRowsError}
-        billRowsError={billRowsError}
-        filteredBillRows={filteredBillRows}
-        billTableColumns={billTableColumns}
-        pageRows={pageRows}
-        onEditBill={handleEditBill}
-        pageStart={pageStart}
-        pageEnd={pageEnd}
-        onPrevPage={() => setTablePage((prev) => Math.max(1, prev - 1))}
-        onNextPage={() => setTablePage((prev) => Math.min(totalPages, prev + 1))}
-        safePage={safePage}
-        totalPages={totalPages}
-        onClearFields={handleClearFields}
-        saving={saving}
-        uploading={uploading}
-        isLastFlowStep={isLastFlowStep}
-        nextFlowPath={nextFlowPath}
-        onNavigateNext={() => handleBillFlowNavigation(nextFlowPath)}
-        onNavigateBack={() => handleBillFlowNavigation(finalStepBackPath, { skipUnsavedPrompt: true })}
-        onOpenUpload={() => setIsUploadModalOpen(true)}
-        nextButtonLabel="Back to Property Records"
-      />
+      {/* Animation wrapper — only the form fields slide-fade on tab switch.
+          The AppLayout card header stays completely stable. */}
+      <div className={`bill-fields-region${fieldsAnimating ? ' bill-fields-animating' : ''}`}>
 
-      <UploadModal
-        open={isUploadModalOpen}
-        uploading={uploading}
-        onClose={() => setIsUploadModalOpen(false)}
-        onUpload={handleUpload}
-      />
+        <PaymentForm
+          panelMode={panelMode}
+          formModeLabel={formModeLabel}
+          isEditMode={isEditMode}
+          comboSearch={comboSearch}
+          onComboChange={handleComboInputChange}
+          onComboFocus={() => setIsComboDropdownOpen(true)}
+          onComboBlur={() => {
+            window.setTimeout(() => setIsComboDropdownOpen(false), 120);
+          }}
+          loadingPropertyRecords={loadingPropertyRecords}
+          filteredPropertyOptions={filteredPropertyOptions}
+          isComboDropdownOpen={isComboDropdownOpen}
+          getPropertyRecordLabel={getPropertyRecordLabel}
+          onOptionSelect={handleOptionSelect}
+          form={form}
+          onUpdateField={updateField}
+          activeBillType={activeBillType}
+          allTypeFields={ALL_TYPE_FIELDS}
+          billTypeFields={BILL_TYPE_FIELDS}
+          onSubmit={handleSubmit}
+          tableSearch={tableSearch}
+          onTableSearchChange={handleTableSearchChange}
+          onBackToForm={handleBackToForm}
+          onRefresh={() => refetchBillRows()}
+          loadingBillRows={loadingBillRows}
+          isBillRowsError={isBillRowsError}
+          billRowsError={billRowsError}
+          filteredBillRows={filteredBillRows}
+          billTableColumns={billTableColumns}
+          pageRows={pageRows}
+          onEditBill={handleEditBill}
+          pageStart={pageStart}
+          pageEnd={pageEnd}
+          onPrevPage={() => setTablePage((prev) => Math.max(1, prev - 1))}
+          onNextPage={() => setTablePage((prev) => Math.min(totalPages, prev + 1))}
+          safePage={safePage}
+          totalPages={totalPages}
+          onClearFields={handleClearFields}
+          saving={saving}
+          uploading={uploading}
+          isLastFlowStep={isLastFlowStep}
+          nextFlowPath={nextFlowPath}
+          onNavigateNext={() => handleBillFlowNavigation(nextFlowPath)}
+          onNavigateBack={() => handleBillFlowNavigation(finalStepBackPath, { skipUnsavedPrompt: true })}
+          onOpenUpload={() => setIsUploadModalOpen(true)}
+          nextButtonLabel="Back to Property Records"
+        />
+
+        <UploadModal
+          open={isUploadModalOpen}
+          uploading={uploading}
+          onClose={() => setIsUploadModalOpen(false)}
+          onUpload={handleUpload}
+        />
+      </div>
     </AppLayout>
   );
 }

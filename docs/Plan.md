@@ -796,3 +796,22 @@ Goal: Implement critical stability mechanisms from the Suggestions document that
 
 ### Task 24 — iOS Safari On-Device QA (+1 pt)
 - [ ] Manually test login, bill entry, upload, and Records sync on iPhone/iPad Safari
+
+---
+
+## Task 25 — Bill Tab Transition (Stable Card, Animated Fields)
+
+**Problem:** Each bill tab (WiFi / Water / Electricity / Association) is a separate route, so switching tabs fully unmounts and remounts `PaymentFormPage`, causing the whole card/header to flash.
+
+**Goal:**
+- Card container and header stay **completely stable** when switching tabs
+- Only the input fields section plays a smooth **slide-fade animation** (220ms)
+- Header text ("WiFi Bills" → "Water Bills") updates **instantly and silently**
+
+**Implementation:**
+- [ ] Merge 4 bill routes into one: `/bills/:billType` in `App.jsx`
+- [ ] `PaymentFormPage` reads `billMode` from `useParams()` instead of props
+- [ ] Wrap module-specific fields in `<div className="fields-section">` with CSS animation triggered on `billMode` change
+- [ ] Add `@keyframes fieldsSlideIn` (opacity 0→1, translateY 10px→0) to global CSS
+- [ ] Old URLs (`/bills/water`, `/bills/wifi`, etc.) redirect to new param route
+- [ ] Run `npm.cmd run test -- --run` — all 11 tests still pass
