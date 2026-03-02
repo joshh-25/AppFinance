@@ -777,3 +777,21 @@ Goal: Implement critical stability mechanisms from the Suggestions document that
 - [x] Add React `ErrorBoundary` specifically to catch UI render crashes (Suggestion #3).
 - [x] Wrap `App.jsx` child routes in the boundary so the sidebar remains functional upon a crash.
 - [x] Run the SQL Database migrations (`setup/run_migrations.php`) to ensure table schemas match the codebase (Suggestion #2).
+
+## Proposed Next Tasks (Pending Approval): 100% Roadmap (91 → 100%)
+
+## Task 21 — PHPUnit Backend Tests (+5 pts)
+- [x] Create `backend/tests/Unit/AuthTest.php` — test role logic, RBAC matrix
+- [x] Create `backend/tests/Unit/BillsValidationTest.php` — test bill field validation
+- [x] Create `backend/tests/Unit/PropertyRecordTest.php` — test property record structure
+- [x] Run `vendor/bin/phpunit --testdox` and confirm all pass (43 tests, 103 assertions ✅)
+
+### Task 22 — Cross-Month Edit Isolation Test (+2 pts)
+- [ ] Add test to `BillingFlow.integration.test.jsx`: edit Feb record, assert Jan unchanged
+- [ ] Run `npm.cmd run test -- --run` and confirm all pass
+
+### Task 23 — Update `Features.md` Docs (+1 pt)
+- [ ] Replace old Vanilla JS / Tailwind references with React + Vite stack description
+
+### Task 24 — iOS Safari On-Device QA (+1 pt)
+- [ ] Manually test login, bill entry, upload, and Records sync on iPhone/iPad Safari
