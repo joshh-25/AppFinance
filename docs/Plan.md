@@ -829,5 +829,17 @@ Goal: Implement critical stability mechanisms from the Suggestions document that
 **Implementation:**
 - [ ] In `AppLayout.jsx`, compute a stable `transitionKey`.
 - [ ] If the path starts with `/bills/`, use `"bills-module"` as the key instead of the exact path.
-- [ ] Apply `key={transitionKey}` to the `<div className="route-transition-layer">`.
-- [ ] Run `npm.cmd run test -- --run` to verify UI shell tests still pass.
+- [x] Apply `key={transitionKey}` to the `<div className="route-transition-layer">`.
+- [x] Run `npm.cmd run test -- --run` to verify UI shell tests still pass.
+
+---
+
+## Task 27 — Bill Form Card Height Limit
+
+**Problem:** The white "Bills Form" card acts like a container that stretches all the way to the absolute bottom of the screen. This makes it look too tall, going way past the "LOG OUT" button in the sidebar.
+
+**Goal:** Combine the card's bottom edge with the top border of the "LOG OUT" section so the design looks horizontally aligned and balanced.
+
+**Implementation:**
+- [ ] In `styles.css` (around line 473), add `margin-bottom: 77px` to `.shell-content-lock-scroll .bill-form-card`. This pushes the bottom of the card up by exactly the height of the user/logout section.
+- [ ] Ensure mobile view (`@media (max-width: 980px)`) resets this margin to `0` so phones don't lose that space (since the sidebar is hidden on phones).
