@@ -16,13 +16,21 @@ export default function Toast({ toasts, onDismiss }) {
             </span>
             <span>
               <span className="toast-label">
-                {toast.type === 'success' ? 'Success' : toast.type === 'error' ? 'Error' : toast.type === 'warning' ? 'Warning' : 'Info'}
+                {toast.type === 'success'
+                  ? 'Success'
+                  : toast.type === 'error'
+                    ? 'Error'
+                    : toast.type === 'warning'
+                      ? 'Warning'
+                      : 'Info'}
                 :
               </span>{' '}
               {toast.message}
             </span>
           </div>
-          <button type="button" className="toast-close" onClick={() => onDismiss(toast.id)}>x</button>
+          <button type="button" className="toast-close" onClick={() => onDismiss(toast.id)}>
+            x
+          </button>
         </div>
       ))}
     </div>

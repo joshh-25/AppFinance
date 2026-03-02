@@ -91,17 +91,18 @@ export default function PaymentForm({
                     {!loadingPropertyRecords && filteredPropertyOptions.length === 0 && (
                       <p className="muted-text combo-item">No matching property record.</p>
                     )}
-                    {!loadingPropertyRecords && filteredPropertyOptions.map((record) => (
-                      <button
-                        key={record.id}
-                        type="button"
-                        className="combo-item-btn"
-                        onMouseDown={(event) => event.preventDefault()}
-                        onClick={() => onOptionSelect(record)}
-                      >
-                        <span>{getPropertyRecordLabel(record)}</span>
-                      </button>
-                    ))}
+                    {!loadingPropertyRecords &&
+                      filteredPropertyOptions.map((record) => (
+                        <button
+                          key={record.id}
+                          type="button"
+                          className="combo-item-btn"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => onOptionSelect(record)}
+                        >
+                          <span>{getPropertyRecordLabel(record)}</span>
+                        </button>
+                      ))}
                   </div>
                 )}
               </div>
@@ -122,12 +123,7 @@ export default function PaymentForm({
           </div>
         </div>
         <div className="card-title-actions">
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={onOpenUpload}
-            disabled={saving || uploading}
-          >
+          <button type="button" className="btn btn-secondary" onClick={onOpenUpload} disabled={saving || uploading}>
             Upload Bill
           </button>
           {panelMode === 'form' && (
@@ -137,7 +133,7 @@ export default function PaymentForm({
               className={isEditMode ? 'btn btn-secondary' : 'btn active'}
               disabled={saving || uploading}
             >
-              {isEditMode ? (saving ? 'Updating...' : 'Update') : (saving ? 'Saving...' : 'Save')}
+              {isEditMode ? (saving ? 'Updating...' : 'Update') : saving ? 'Saving...' : 'Save'}
             </button>
           )}
         </div>
@@ -167,16 +163,8 @@ export default function PaymentForm({
 
       {panelMode === 'table' && (
         <div className="filters">
-          <input
-            value={tableSearch}
-            onChange={onTableSearchChange}
-            placeholder="Search bill records..."
-          />
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={onBackToForm}
-          >
+          <input value={tableSearch} onChange={onTableSearchChange} placeholder="Search bill records..." />
+          <button type="button" className="btn btn-secondary" onClick={onBackToForm}>
             Back to Form
           </button>
           <button type="button" className="btn btn-secondary" onClick={onRefresh}>
@@ -186,7 +174,9 @@ export default function PaymentForm({
       )}
 
       {panelMode === 'table' && loadingBillRows && <p className="muted-text">Loading records...</p>}
-      {panelMode === 'table' && isBillRowsError && <p className="error">{billRowsError?.message || 'Failed to load records.'}</p>}
+      {panelMode === 'table' && isBillRowsError && (
+        <p className="error">{billRowsError?.message || 'Failed to load records.'}</p>
+      )}
 
       {panelMode === 'table' && !loadingBillRows && !isBillRowsError && filteredBillRows.length === 0 && (
         <div className="empty-state">
@@ -198,7 +188,9 @@ export default function PaymentForm({
       )}
 
       {panelMode === 'table' && !loadingBillRows && !isBillRowsError && filteredBillRows.length > 0 && (
-        <div className={`property-records-content bill-fields-region${fieldsAnimating ? ' bill-fields-animating' : ''}`}>
+        <div
+          className={`property-records-content bill-fields-region${fieldsAnimating ? ' bill-fields-animating' : ''}`}
+        >
           <div className="table-wrap property-records-table-wrap">
             <table>
               <thead>
@@ -215,17 +207,15 @@ export default function PaymentForm({
                     {billTableColumns.map(([key]) => (
                       <td key={`${row.id}-${key}`}>
                         {key === 'display_property_dd'
-                          ? (row.property && String(row.property).trim() !== '' ? row.property : row.dd || '-')
+                          ? row.property && String(row.property).trim() !== ''
+                            ? row.property
+                            : row.dd || '-'
                           : row[key] || '-'}
                       </td>
                     ))}
                     <td>
                       <div className="action-buttons">
-                        <button
-                          type="button"
-                          className="btn btn-secondary"
-                          onClick={() => onEditBill(row)}
-                        >
+                        <button type="button" className="btn btn-secondary" onClick={() => onEditBill(row)}>
                           Edit
                         </button>
                       </div>
@@ -241,20 +231,10 @@ export default function PaymentForm({
               Showing {pageStart}-{pageEnd} of {filteredBillRows.length}
             </span>
             <div className="actions">
-              <button
-                type="button"
-                className="btn"
-                onClick={onPrevPage}
-                disabled={safePage === 1}
-              >
+              <button type="button" className="btn" onClick={onPrevPage} disabled={safePage === 1}>
                 Previous
               </button>
-              <button
-                type="button"
-                className="btn"
-                onClick={onNextPage}
-                disabled={safePage === totalPages}
-              >
+              <button type="button" className="btn" onClick={onNextPage} disabled={safePage === totalPages}>
                 Next
               </button>
             </div>
@@ -275,22 +255,12 @@ export default function PaymentForm({
             Clear
           </button>
           {!isLastFlowStep && nextFlowPath && (
-            <button
-              type="button"
-              className="btn active"
-              onClick={onNavigateNext}
-              disabled={saving || uploading}
-            >
+            <button type="button" className="btn active" onClick={onNavigateNext} disabled={saving || uploading}>
               Next
             </button>
           )}
           {isLastFlowStep && (
-            <button
-              type="button"
-              className="btn active"
-              onClick={onNavigateBack}
-              disabled={saving || uploading}
-            >
+            <button type="button" className="btn active" onClick={onNavigateBack} disabled={saving || uploading}>
               {nextButtonLabel || 'Back to Property Records'}
             </button>
           )}

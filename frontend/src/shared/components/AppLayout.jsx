@@ -132,7 +132,14 @@ export default function AppLayout({
 
   return (
     <div className="shell">
-      {isSidebarOpen && <button type="button" className="shell-backdrop" onClick={() => setIsSidebarOpen(false)} aria-label="Close menu" />}
+      {isSidebarOpen && (
+        <button
+          type="button"
+          className="shell-backdrop"
+          onClick={() => setIsSidebarOpen(false)}
+          aria-label="Close menu"
+        />
+      )}
       <aside className={`shell-sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <div className="shell-sidebar-glow" aria-hidden="true" />
         <div className="brand-wrap">
@@ -147,14 +154,48 @@ export default function AppLayout({
         </div>
         <nav className="shell-nav">
           <p className="shell-nav-label">Modules</p>
-          <NavLink to="/dashboard" className={navClassName} onClick={(event) => handleNavigation(event, '/dashboard')}>Dashboard</NavLink>
-          <NavLink to="/records" className={navClassName} onClick={(event) => handleNavigation(event, '/records')}>Records</NavLink>
-          <NavLink to="/property-records" className={navClassName} onClick={(event) => handleNavigation(event, '/property-records')}>Property Records</NavLink>
+          <NavLink to="/dashboard" className={navClassName} onClick={(event) => handleNavigation(event, '/dashboard')}>
+            Dashboard
+          </NavLink>
+          <NavLink to="/records" className={navClassName} onClick={(event) => handleNavigation(event, '/records')}>
+            Records
+          </NavLink>
+          <NavLink
+            to="/property-records"
+            className={navClassName}
+            onClick={(event) => handleNavigation(event, '/property-records')}
+          >
+            Property Records
+          </NavLink>
           <p className="shell-nav-label">Bills</p>
-          <Link to="/bills/wifi" className={billLinkClass('/bills/wifi')} onClick={(event) => handleNavigation(event, '/bills/wifi')}>WiFi Bills</Link>
-          <Link to="/bills/water" className={billLinkClass('/bills/water')} onClick={(event) => handleNavigation(event, '/bills/water')}>Water Bills</Link>
-          <Link to="/bills/electricity" className={billLinkClass('/bills/electricity')} onClick={(event) => handleNavigation(event, '/bills/electricity')}>Electricity Bills</Link>
-          <Link to="/bills/association" className={billLinkClass('/bills/association')} onClick={(event) => handleNavigation(event, '/bills/association')}>Association Bills</Link>
+          <Link
+            to="/bills/wifi"
+            className={billLinkClass('/bills/wifi')}
+            onClick={(event) => handleNavigation(event, '/bills/wifi')}
+          >
+            WiFi Bills
+          </Link>
+          <Link
+            to="/bills/water"
+            className={billLinkClass('/bills/water')}
+            onClick={(event) => handleNavigation(event, '/bills/water')}
+          >
+            Water Bills
+          </Link>
+          <Link
+            to="/bills/electricity"
+            className={billLinkClass('/bills/electricity')}
+            onClick={(event) => handleNavigation(event, '/bills/electricity')}
+          >
+            Electricity Bills
+          </Link>
+          <Link
+            to="/bills/association"
+            className={billLinkClass('/bills/association')}
+            onClick={(event) => handleNavigation(event, '/bills/association')}
+          >
+            Association Bills
+          </Link>
         </nav>
         <a href="/Finance/logout.php" className="shell-user">
           <div className="shell-user-avatar">{getUserInitials(displayName)}</div>
@@ -188,7 +229,10 @@ export default function AppLayout({
                 <>
                   <svg className="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <circle cx="12" cy="12" r="4" />
-                    <path strokeLinecap="round" d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32 1.41-1.41" />
+                    <path
+                      strokeLinecap="round"
+                      d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32 1.41-1.41"
+                    />
                   </svg>
                   <span>Light</span>
                 </>
@@ -208,23 +252,27 @@ export default function AppLayout({
         {/* The 'no-transition' class is added for stable modules to disable global fade-in animations that would move the card */}
         <div
           key={
-            location.pathname.startsWith('/bills/') ? 'bills-module' :
-              location.pathname.startsWith('/records') ? 'records-module' :
-                location.pathname.startsWith('/property-records') ? 'property-records-module' :
-                  `${location.pathname}${location.search}`
+            location.pathname.startsWith('/bills/')
+              ? 'bills-module'
+              : location.pathname.startsWith('/records')
+                ? 'records-module'
+                : location.pathname.startsWith('/property-records')
+                  ? 'property-records-module'
+                  : `${location.pathname}${location.search}`
           }
-          className={`route-transition-layer ${(location.pathname.startsWith('/bills/') ||
-              location.pathname.startsWith('/records') ||
-              location.pathname.startsWith('/property-records')) ? 'no-transition' : ''
-            }`.trim()}
+          className={`route-transition-layer ${
+            location.pathname.startsWith('/bills/') ||
+            location.pathname.startsWith('/records') ||
+            location.pathname.startsWith('/property-records')
+              ? 'no-transition'
+              : ''
+          }`.trim()}
         >
           <div
             className="route-transition-content"
             style={isLockScrollLayout && lockContentHeight !== null ? { height: `${lockContentHeight}px` } : undefined}
           >
-            <ErrorBoundary>
-              {children}
-            </ErrorBoundary>
+            <ErrorBoundary>{children}</ErrorBoundary>
           </div>
         </div>
       </section>

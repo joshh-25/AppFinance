@@ -9,43 +9,43 @@ import LoginPage from '../LoginPage.jsx';
 import { checkSession } from '../../../shared/lib/auth.js';
 
 vi.mock('../../../shared/lib/auth.js', () => ({
-    checkSession: vi.fn()
+  checkSession: vi.fn()
 }));
 
 function renderLoginPage() {
-    const queryClient = new QueryClient({
-        defaultOptions: {
-            queries: {
-                retry: false
-            }
-        }
-    });
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false
+      }
+    }
+  });
 
-    return render(
-        <QueryClientProvider client={queryClient}>
-            <MemoryRouter>
-                <LoginPage />
-            </MemoryRouter>
-        </QueryClientProvider>
-    );
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>
+    </QueryClientProvider>
+  );
 }
 
 describe('LoginPage', () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-        checkSession.mockResolvedValue({ authenticated: false });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    checkSession.mockResolvedValue({ authenticated: false });
+  });
+
+  it('renders login form content', async () => {
+    renderLoginPage();
+
+    expect(screen.getByRole('heading', { name: /log in/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/username/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /log in/i })).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(checkSession).toHaveBeenCalled();
     });
-
-    it('renders login form content', async () => {
-        renderLoginPage();
-
-        expect(screen.getByRole('heading', { name: /log in/i })).toBeInTheDocument();
-        expect(screen.getByLabelText(/username/i)).toBeInTheDocument();
-        expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /log in/i })).toBeInTheDocument();
-
-        await waitFor(() => {
-            expect(checkSession).toHaveBeenCalled();
-        });
-    });
+  });
 });

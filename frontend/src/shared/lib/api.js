@@ -31,11 +31,7 @@ async function ensureCsrfToken() {
 }
 
 async function requestJson(action, options = {}) {
-  const {
-    method = 'GET',
-    payload,
-    defaultMessage = 'Request failed.'
-  } = options;
+  const { method = 'GET', payload, defaultMessage = 'Request failed.' } = options;
 
   const fetchOptions = {
     method,
@@ -75,7 +71,9 @@ async function requestJson(action, options = {}) {
 }
 
 function normalizeBillTypeFilter(value) {
-  const normalized = String(value || '').trim().toLowerCase();
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase();
   if (normalized === 'wifi') {
     return 'internet';
   }
@@ -187,9 +185,7 @@ export async function uploadBill(file, context = {}) {
   if (!response.ok || !result || result.success !== true) {
     const status = Number(result?.status_code || response.status || 0);
     const details = result?.details ? ` ${String(result.details)}` : '';
-    const defaultMessage = status > 0
-      ? `Upload failed (HTTP ${status}).`
-      : 'Upload failed.';
+    const defaultMessage = status > 0 ? `Upload failed (HTTP ${status}).` : 'Upload failed.';
     throw new Error((result?.message || defaultMessage) + details);
   }
 

@@ -19,21 +19,19 @@ function normalizeAmount(value) {
   if (text === '') {
     return 0;
   }
-  const cleaned = text
-    .replace(/,/g, '')
-    .replace(/[^\d.-]/g, '');
+  const cleaned = text.replace(/,/g, '').replace(/[^\d.-]/g, '');
   const parsed = Number.parseFloat(cleaned);
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function isPaidStatus(status) {
-  const normalized = String(status ?? '').trim().toLowerCase();
+  const normalized = String(status ?? '')
+    .trim()
+    .toLowerCase();
   if (normalized === '') {
     return false;
   }
-  return normalized === 'paid'
-    || normalized === 'settled'
-    || normalized === 'completed';
+  return normalized === 'paid' || normalized === 'settled' || normalized === 'completed';
 }
 
 function computeRowTotal(row) {
@@ -79,7 +77,9 @@ function formatBillingPeriod(period) {
 }
 
 function formatBillType(type) {
-  const normalized = String(type ?? '').trim().toLowerCase();
+  const normalized = String(type ?? '')
+    .trim()
+    .toLowerCase();
   if (normalized === 'association_dues') {
     return 'Association';
   }
@@ -96,9 +96,11 @@ function formatBillType(type) {
 }
 
 function summarizeRowStatus(row) {
-  const statuses = MODULE_AMOUNT_STATUS_FIELDS
-    .map(([, statusField]) => String(row[statusField] ?? '').trim().toLowerCase())
-    .filter(Boolean);
+  const statuses = MODULE_AMOUNT_STATUS_FIELDS.map(([, statusField]) =>
+    String(row[statusField] ?? '')
+      .trim()
+      .toLowerCase()
+  ).filter(Boolean);
 
   if (statuses.length === 0) {
     return 'No status';
@@ -127,7 +129,12 @@ function sortByMostRecent(rows) {
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { data: records = [], isLoading, isError, error } = useQuery({
+  const {
+    data: records = [],
+    isLoading,
+    isError,
+    error
+  } = useQuery({
     queryKey: ['records-list'],
     queryFn: fetchBills
   });

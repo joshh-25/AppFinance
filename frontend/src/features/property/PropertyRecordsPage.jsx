@@ -67,7 +67,9 @@ const BILL_FLOW_ROUTES = ['/bills/wifi', '/bills/water', '/bills/electricity', '
 const UNSAVED_MESSAGE = 'You have unsaved changes. Save before leaving this page?';
 
 function isBillsOrPropertyRoute(path) {
-  const normalizedPath = String(path || '').trim().toLowerCase();
+  const normalizedPath = String(path || '')
+    .trim()
+    .toLowerCase();
   return normalizedPath.startsWith('/property-records') || normalizedPath.startsWith('/bills/');
 }
 
@@ -89,7 +91,11 @@ function mapToPropertyForm(source = {}) {
 }
 
 function isPartnershipClassification(value) {
-  return String(value || '').trim().toLowerCase() === 'partnership';
+  return (
+    String(value || '')
+      .trim()
+      .toLowerCase() === 'partnership'
+  );
 }
 
 export default function PropertyRecordsPage() {
@@ -117,11 +123,7 @@ export default function PropertyRecordsPage() {
   const isScopedBillEditMode = scopedBillEdit !== null;
   const isEditMode = selectedId !== null || isScopedBillEditMode;
   const isDirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(baselineForm), [form, baselineForm]);
-  const formModeLabel = isScopedBillEditMode
-    ? 'Edit Mode (From Records)'
-    : isEditMode
-      ? 'Edit Mode'
-      : 'Create Mode';
+  const formModeLabel = isScopedBillEditMode ? 'Edit Mode (From Records)' : isEditMode ? 'Edit Mode' : 'Create Mode';
 
   useEffect(() => {
     setPanelMode(isListRoute ? 'table' : 'form');
@@ -197,13 +199,12 @@ export default function PropertyRecordsPage() {
 
     const sharedSelection = parseContext(window.sessionStorage.getItem(SHARED_BILL_SELECTION_KEY));
     const directSelection = parseContext(window.sessionStorage.getItem(SELECTED_PROPERTY_CONTEXT_KEY));
-    const sharedForm = sharedSelection?.form && typeof sharedSelection.form === 'object'
-      ? sharedSelection.form
-      : null;
+    const sharedForm = sharedSelection?.form && typeof sharedSelection.form === 'object' ? sharedSelection.form : null;
     const contextSource = directSelection || sharedForm || sharedSelection;
-    const hasContextIdentity = Number(contextSource?.property_list_id || contextSource?.id || 0) > 0
-      || String(contextSource?.dd || '').trim() !== ''
-      || String(contextSource?.property || '').trim() !== '';
+    const hasContextIdentity =
+      Number(contextSource?.property_list_id || contextSource?.id || 0) > 0 ||
+      String(contextSource?.dd || '').trim() !== '' ||
+      String(contextSource?.property || '').trim() !== '';
     if (contextSource && hasContextIdentity) {
       const nextForm = mapToPropertyForm(contextSource);
       setForm(nextForm);
@@ -264,9 +265,15 @@ export default function PropertyRecordsPage() {
     }
 
     const normalizedPropertyListId = Number(nextForm.property_list_id || parsed.property_list_id || parsed.id || 0);
-    const normalizedDd = String(nextForm.dd || '').trim().toLowerCase();
-    const normalizedProperty = String(nextForm.property || '').trim().toLowerCase();
-    const normalizedBillingPeriod = String(nextForm.billing_period || '').trim().toLowerCase();
+    const normalizedDd = String(nextForm.dd || '')
+      .trim()
+      .toLowerCase();
+    const normalizedProperty = String(nextForm.property || '')
+      .trim()
+      .toLowerCase();
+    const normalizedBillingPeriod = String(nextForm.billing_period || '')
+      .trim()
+      .toLowerCase();
 
     let cancelled = false;
     (async () => {
@@ -281,9 +288,15 @@ export default function PropertyRecordsPage() {
           if (normalizedPropertyListId > 0 && rowPropertyListId === normalizedPropertyListId) {
             return true;
           }
-          const rowDd = String(row.dd || '').trim().toLowerCase();
-          const rowProperty = String(row.property || '').trim().toLowerCase();
-          const rowBillingPeriod = String(row.billing_period || '').trim().toLowerCase();
+          const rowDd = String(row.dd || '')
+            .trim()
+            .toLowerCase();
+          const rowProperty = String(row.property || '')
+            .trim()
+            .toLowerCase();
+          const rowBillingPeriod = String(row.billing_period || '')
+            .trim()
+            .toLowerCase();
           const ddMatches = normalizedDd !== '' && rowDd === normalizedDd;
           const propertyMatches = normalizedProperty !== '' && rowProperty === normalizedProperty;
           const billingMatches = normalizedBillingPeriod !== '' && rowBillingPeriod === normalizedBillingPeriod;
@@ -356,7 +369,13 @@ export default function PropertyRecordsPage() {
       return records;
     }
 
-    return records.filter((row) => FIELDS.some(([key]) => String(row[key] || '').toLowerCase().includes(query)));
+    return records.filter((row) =>
+      FIELDS.some(([key]) =>
+        String(row[key] || '')
+          .toLowerCase()
+          .includes(query)
+      )
+    );
   }, [records, search]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ROWS_PER_PAGE));
@@ -430,9 +449,8 @@ export default function PropertyRecordsPage() {
   async function updateRecord() {
     setUpdating(true);
     try {
-      const updateId = isScopedBillEditMode && scopedBillEdit
-        ? Number(scopedBillEdit.id || 0)
-        : Number(selectedId || 0);
+      const updateId =
+        isScopedBillEditMode && scopedBillEdit ? Number(scopedBillEdit.id || 0) : Number(selectedId || 0);
       if (updateId <= 0) {
         showToast('error', 'No property record selected for update.');
         return false;
@@ -551,9 +569,8 @@ export default function PropertyRecordsPage() {
 
     if (isRecordsMode && scopedBillEdit) {
       const scopedId = Number(scopedBillEdit.id || 0);
-      const baseContext = scopedBillEdit.raw_context && typeof scopedBillEdit.raw_context === 'object'
-        ? scopedBillEdit.raw_context
-        : {};
+      const baseContext =
+        scopedBillEdit.raw_context && typeof scopedBillEdit.raw_context === 'object' ? scopedBillEdit.raw_context : {};
       const recordsEditPayload = {
         ...baseContext,
         property_list_id: Number(form.property_list_id || selectedId || 0),
@@ -659,6 +676,7 @@ export default function PropertyRecordsPage() {
     return () => {
       window.removeEventListener('keydown', handleShortcut);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [panelMode, saving, updating, deleting, form, selectedId, scopedBillEdit]);
 
   const unsavedGuard = useUnsavedChangesGuard({
@@ -717,7 +735,9 @@ export default function PropertyRecordsPage() {
         onConfirm={unsavedGuard.leaveWithoutSaving}
         busy={unsavedGuard.isPromptBusy}
       />
-      <section className={`card bill-form-card ${panelMode === 'table' ? 'property-records-card' : 'property-records-form-card'}`}>
+      <section
+        className={`card bill-form-card ${panelMode === 'table' ? 'property-records-card' : 'property-records-form-card'}`}
+      >
         {panelMode === 'form' && (
           <div className="card-title-row">
             <div className="card-title-left">
@@ -742,35 +762,36 @@ export default function PropertyRecordsPage() {
                 onClick={handlePrimaryAction}
                 disabled={saving || updating || !hasRequiredFields()}
               >
-                {isEditMode ? (updating ? 'Updating...' : 'Update') : (saving ? 'Saving...' : 'Save')}
+                {isEditMode ? (updating ? 'Updating...' : 'Update') : saving ? 'Saving...' : 'Save'}
               </button>
             </div>
           </div>
         )}
 
         {panelMode === 'form' && (
-          <div className={`property-records-form-content bill-fields-region${fieldsAnimating ? ' bill-fields-animating' : ''}`}>
+          <div
+            className={`property-records-form-content bill-fields-region${fieldsAnimating ? ' bill-fields-animating' : ''}`}
+          >
             <form id="property-record-form" className="form-grid" onSubmit={handleSave} autoComplete="off">
               {FIELDS.map(([name, label]) => {
                 if (name === 'classification') {
                   return (
                     <label key={name}>
                       {label}
-                      <select
-                        name={name}
-                        value={form[name]}
-                        onChange={updateField}
-                      >
+                      <select name={name} value={form[name]} onChange={updateField}>
                         <option value="">Select classification...</option>
                         {CLASSIFICATION_OPTIONS.map((option) => (
-                          <option key={option} value={option}>{option}</option>
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
                         ))}
                       </select>
                     </label>
                   );
                 }
 
-                const lockFinancialFields = isPartnershipClassification(form.classification) && (name === 'deposit' || name === 'rent');
+                const lockFinancialFields =
+                  isPartnershipClassification(form.classification) && (name === 'deposit' || name === 'rent');
                 return (
                   <label key={name}>
                     {label}
@@ -797,18 +818,10 @@ export default function PropertyRecordsPage() {
               </button>
             </div>
             <div className="workflow-footer-right">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={handleClearForm}
-              >
+              <button type="button" className="btn btn-secondary" onClick={handleClearForm}>
                 Clear
               </button>
-              <button
-                type="button"
-                className="btn active"
-                onClick={handleNextBillSection}
-              >
+              <button type="button" className="btn active" onClick={handleNextBillSection}>
                 Next
               </button>
             </div>
@@ -826,11 +839,7 @@ export default function PropertyRecordsPage() {
               }}
               placeholder="Search property records..."
             />
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={handleBackToForm}
-            >
+            <button type="button" className="btn btn-secondary" onClick={handleBackToForm}>
               Back to Form
             </button>
             <button type="button" className="btn btn-secondary" onClick={() => refetch()}>
@@ -852,7 +861,9 @@ export default function PropertyRecordsPage() {
         )}
 
         {panelMode === 'table' && !isLoading && !isError && filtered.length > 0 && (
-          <div className={`property-records-content bill-fields-region${fieldsAnimating ? ' bill-fields-animating' : ''}`}>
+          <div
+            className={`property-records-content bill-fields-region${fieldsAnimating ? ' bill-fields-animating' : ''}`}
+          >
             <div className="table-wrap property-records-table-wrap">
               <table>
                 <thead>
@@ -871,18 +882,10 @@ export default function PropertyRecordsPage() {
                       ))}
                       <td>
                         <div className="action-buttons">
-                          <button
-                            type="button"
-                            className="btn btn-secondary"
-                            onClick={() => handleEdit(row)}
-                          >
+                          <button type="button" className="btn btn-secondary" onClick={() => handleEdit(row)}>
                             Edit
                           </button>
-                          <button
-                            type="button"
-                            className="btn btn-danger"
-                            onClick={() => handleDelete(row)}
-                          >
+                          <button type="button" className="btn btn-danger" onClick={() => handleDelete(row)}>
                             Delete
                           </button>
                         </div>

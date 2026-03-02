@@ -3,11 +3,7 @@
 
 import { useEffect, useState } from 'react';
 
-export function useUnsavedChangesGuard({
-  isDirty,
-  shouldBypassPrompt = () => false,
-  onSaveAndLeave
-}) {
+export function useUnsavedChangesGuard({ isDirty, shouldBypassPrompt = () => false, onSaveAndLeave }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [pendingResolver, setPendingResolver] = useState(null);

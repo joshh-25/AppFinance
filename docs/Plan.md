@@ -869,3 +869,28 @@ Goal: Implement critical stability mechanisms from the Suggestions document that
 - [x] In `PaymentFormPage.jsx`, create a label mapping for `billMode`.
 - [x] Pass the mapped label as the `title` prop to `AppLayout`.
 - [x] Ensure the update is seamless and does not trigger any card remounts.
+
+---
+
+## Phase 4: Technical Debt & Quality Gates (Proposed)
+
+**Problem:** As the application has grown, core files (`PaymentFormPage.jsx`, `styles.css`, `LegacyBills.php`) have become extremely large (1800-2200 lines). There are no automated quality gates (linting, formatting, type checking) in the CI/CD pipeline, increasing the risk of silent bugs and making future development slower and riskier.
+
+**Goal:** modularize the codebase, enforce code formatting, and introduce static analysis to ensure long-term maintainability without altering the end-user experience.
+
+### Task 30 — Frontend Modularization (`PaymentFormPage.jsx`)
+- Break down the ~2000-line `PaymentFormPage.jsx` into smaller, focused React components (e.g., `BillFormContainer`, `BillTable`, `UploadOCRModal`, `PaginationControl`).
+- Extract the complex OCR parsing logic into a dedicated utility file (`/src/shared/lib/ocrParser.js`).
+
+### Task 31 — CSS Modularization (`styles.css`)
+- Split the monolithic `styles.css` (~2200 lines) into feature-specific CSS Modules or smaller stylesheets (e.g., `Dashboard.css`, `BillsForm.css`, `Auth.css`).
+- Resolve global namespace collisions.
+
+### Task 32 — Quality Gates Configuration
+- **ESLint & Prettier:** Install and configure strict linting rules for React best practices.
+- Add a `"lint"` and `"format"` script to `package.json`.
+- Optional: Add basic PropTypes or adopt TypeScript definitions via JSDoc for safer API responses.
+
+### Task 33 — Backend Refactoring (Legacy PHP)
+- Refactor `LegacyBills.php` (~874 lines) and `LegacyBootstrap.php` into modern, single-responsibility Controller and Service classes.
+- Extract generic database query wrappers to reduce duplication.

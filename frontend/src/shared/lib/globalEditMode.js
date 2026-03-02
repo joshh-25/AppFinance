@@ -21,7 +21,9 @@ function parseStoredValue(rawValue) {
   };
 
   const normalizeScope = (value) => {
-    const candidate = String(value || '').trim().toLowerCase();
+    const candidate = String(value || '')
+      .trim()
+      .toLowerCase();
     return EDIT_SCOPES.includes(candidate) ? candidate : DEFAULT_SCOPE;
   };
 
@@ -38,9 +40,10 @@ function parseStoredValue(rawValue) {
     const primaryScope = pickPrimaryScope(scopes, currentScope);
     return {
       active: scopes[primaryScope]?.active === true,
-      context: scopes[primaryScope]?.context && typeof scopes[primaryScope].context === 'object'
-        ? scopes[primaryScope].context
-        : null,
+      context:
+        scopes[primaryScope]?.context && typeof scopes[primaryScope].context === 'object'
+          ? scopes[primaryScope].context
+          : null,
       current_scope: primaryScope,
       scopes
     };
@@ -99,7 +102,9 @@ function saveSnapshot(snapshot) {
 }
 
 function normalizeScopeName(scope) {
-  const normalized = String(scope || '').trim().toLowerCase();
+  const normalized = String(scope || '')
+    .trim()
+    .toLowerCase();
   return EDIT_SCOPES.includes(normalized) ? normalized : DEFAULT_SCOPE;
 }
 

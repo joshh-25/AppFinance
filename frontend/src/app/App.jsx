@@ -24,7 +24,11 @@ function ProtectedRoute({ children }) {
   });
 
   if (isLoading) {
-    return <main className="page"><p>Checking session...</p></main>;
+    return (
+      <main className="page">
+        <p>Checking session...</p>
+      </main>
+    );
   }
 
   if (isError || data?.authenticated !== true) {
@@ -42,40 +46,40 @@ function AppRoutes() {
       <Route path="/payments" element={<Navigate to="/dashboard" replace />} />
       <Route
         path="/dashboard"
-        element={(
+        element={
           <ProtectedRoute>
             <DashboardPage />
           </ProtectedRoute>
-        )}
+        }
       />
 
       {/* Single persistent bill route — no re-mount when switching tabs */}
       <Route
         path="/bills/:billType"
-        element={(
+        element={
           <ProtectedRoute>
             <PaymentFormPage />
           </ProtectedRoute>
-        )}
+        }
       />
       {/* /bills with no type → default to water */}
       <Route path="/bills" element={<Navigate to="/bills/water" replace />} />
 
       <Route
         path="/records"
-        element={(
+        element={
           <ProtectedRoute>
             <RecordsPage />
           </ProtectedRoute>
-        )}
+        }
       />
       <Route
         path="/property-records/*"
-        element={(
+        element={
           <ProtectedRoute>
             <PropertyRecordsPage />
           </ProtectedRoute>
-        )}
+        }
       />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

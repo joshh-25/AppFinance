@@ -12,14 +12,17 @@ export function useToast() {
     setToasts((current) => current.filter((toast) => toast.id !== id));
   }, []);
 
-  const showToast = useCallback((type, message, timeout = 3500) => {
-    const id = nextToastId++;
-    setToasts((current) => [...current, { id, type, message }]);
+  const showToast = useCallback(
+    (type, message, timeout = 3500) => {
+      const id = nextToastId++;
+      setToasts((current) => [...current, { id, type, message }]);
 
-    if (timeout > 0) {
-      window.setTimeout(() => removeToast(id), timeout);
-    }
-  }, [removeToast]);
+      if (timeout > 0) {
+        window.setTimeout(() => removeToast(id), timeout);
+      }
+    },
+    [removeToast]
+  );
 
   return useMemo(() => ({ toasts, showToast, removeToast }), [toasts, showToast, removeToast]);
 }

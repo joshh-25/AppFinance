@@ -120,8 +120,15 @@ function resolveBillTypeFromRow(row, billView) {
     return viewType;
   }
 
-  const hintedType = String(row?.bill_type || '').trim().toLowerCase();
-  if (hintedType === 'water' || hintedType === 'electricity' || hintedType === 'internet' || hintedType === 'association_dues') {
+  const hintedType = String(row?.bill_type || '')
+    .trim()
+    .toLowerCase();
+  if (
+    hintedType === 'water' ||
+    hintedType === 'electricity' ||
+    hintedType === 'internet' ||
+    hintedType === 'association_dues'
+  ) {
     return hintedType;
   }
 
@@ -138,10 +145,29 @@ function resolveBillTypeFromRow(row, billView) {
   }
 
   const hasTypeData = {
-    water: String(row?.water_account_no || row?.water_amount || row?.water_due_date || row?.water_payment_status || '').trim() !== '',
-    electricity: String(row?.electricity_account_no || row?.electricity_amount || row?.electricity_due_date || row?.electricity_payment_status || '').trim() !== '',
-    internet: String(row?.wifi_amount || row?.internet_account_no || row?.internet_provider || row?.wifi_due_date || row?.wifi_payment_status || '').trim() !== '',
-    association_dues: String(row?.association_dues || row?.association_due_date || row?.association_payment_status || '').trim() !== ''
+    water:
+      String(
+        row?.water_account_no || row?.water_amount || row?.water_due_date || row?.water_payment_status || ''
+      ).trim() !== '',
+    electricity:
+      String(
+        row?.electricity_account_no ||
+        row?.electricity_amount ||
+        row?.electricity_due_date ||
+        row?.electricity_payment_status ||
+        ''
+      ).trim() !== '',
+    internet:
+      String(
+        row?.wifi_amount ||
+        row?.internet_account_no ||
+        row?.internet_provider ||
+        row?.wifi_due_date ||
+        row?.wifi_payment_status ||
+        ''
+      ).trim() !== '',
+    association_dues:
+      String(row?.association_dues || row?.association_due_date || row?.association_payment_status || '').trim() !== ''
   };
   const candidatesByData = typeOrder.filter((type) => hasTypeData[type]);
   if (candidatesByData.length === 1) {
@@ -180,12 +206,12 @@ function normalizeBillingPeriodValue(value) {
     return `${fromYmd[1]}-${fromYmd[2]}`;
   }
 
-  const slash = raw.match(/^(\d{4})[\/](0?[1-9]|1[0-2])$/);
+  const slash = raw.match(/^(\d{4})\/(0?[1-9]|1[0-2])$/);
   if (slash) {
     return `${slash[1]}-${String(Number(slash[2])).padStart(2, '0')}`;
   }
 
-  const monthYear = raw.match(/^(0?[1-9]|1[0-2])[\/-](\d{4})$/);
+  const monthYear = raw.match(/^(0?[1-9]|1[0-2])[-/](\d{4})$/);
   if (monthYear) {
     return `${monthYear[2]}-${String(Number(monthYear[1])).padStart(2, '0')}`;
   }
@@ -227,17 +253,21 @@ export default function RecordsPage() {
 
   const filteredRows = useMemo(() => {
     const allRows = Array.isArray(records) ? records : [];
-    const byView = allRows.filter((row) => (
-      billView === 'all' ? true : config.hasData(row)
-    ));
-    const query = String(search || '').trim().toLowerCase();
+    const byView = allRows.filter((row) => (billView === 'all' ? true : config.hasData(row)));
+    const query = String(search || '')
+      .trim()
+      .toLowerCase();
     if (query === '') {
       return byView;
     }
 
-    return byView.filter((row) => (
-      tableColumns.some(([key]) => String(row[key] || '').toLowerCase().includes(query))
-    ));
+    return byView.filter((row) =>
+      tableColumns.some(([key]) =>
+        String(row[key] || '')
+          .toLowerCase()
+          .includes(query)
+      )
+    );
   }, [records, billView, config, search, tableColumns]);
 
   const totalRows = filteredRows.length;
@@ -331,21 +361,21 @@ export default function RecordsPage() {
       internet: internetBillId,
       association_dues: associationBillId
     };
-    const editingBillId = (
-      billType === 'water'
+    const editingBillId =
+      (billType === 'water'
         ? waterBillId
         : billType === 'electricity'
           ? electricityBillId
           : billType === 'internet'
             ? internetBillId
-            : associationBillId
-    ) || rowId;
+            : associationBillId) || rowId;
     let targetType = billType;
     let targetEditingBillId = editingBillId;
 
     if (targetEditingBillId <= 0) {
-      const fallbackType = ['water', 'electricity', 'internet', 'association_dues']
-        .find((type) => billIdsByType[type] > 0);
+      const fallbackType = ['water', 'electricity', 'internet', 'association_dues'].find(
+        (type) => billIdsByType[type] > 0
+      );
 
       if (!fallbackType) {
         showToast('warning', 'No editable bill ID exists for the selected row.');
@@ -416,15 +446,20 @@ export default function RecordsPage() {
     setExporting(true);
     try {
       const exportSource = await fetchMergedBills();
-      const byView = exportSource.filter((row) => (
-        billView === 'all' ? true : config.hasData(row)
-      ));
-      const query = String(search || '').trim().toLowerCase();
-      const recordsData = query === ''
-        ? byView
-        : byView.filter((row) => (
-          tableColumns.some(([key]) => String(row[key] || '').toLowerCase().includes(query))
-        ));
+      const byView = exportSource.filter((row) => (billView === 'all' ? true : config.hasData(row)));
+      const query = String(search || '')
+        .trim()
+        .toLowerCase();
+      const recordsData =
+        query === ''
+          ? byView
+          : byView.filter((row) =>
+            tableColumns.some(([key]) =>
+              String(row[key] || '')
+                .toLowerCase()
+                .includes(query)
+            )
+          );
 
       if (!Array.isArray(recordsData) || recordsData.length === 0) {
         showToast('error', 'No records found to export.');
@@ -483,11 +518,7 @@ export default function RecordsPage() {
           ))}
         </div>
         <div className="filters">
-          <input
-            value={search}
-            onChange={handleSearchChange}
-            placeholder="Search visible fields..."
-          />
+          <input value={search} onChange={handleSearchChange} placeholder="Search visible fields..." />
           <button
             type="button"
             className={selectedRowData ? 'btn active' : 'btn btn-secondary'}
@@ -501,7 +532,8 @@ export default function RecordsPage() {
           </button>
         </div>
         <p className="muted-text records-helper-text">
-          Tip: select one row then click <span className="value-emphasis">Edit</span>, or double-click a row to open it immediately.
+          Tip: select one row then click <span className="value-emphasis">Edit</span>, or double-click a row to open it
+          immediately.
         </p>
 
         {isLoading && <p>Loading records...</p>}

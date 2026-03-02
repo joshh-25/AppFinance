@@ -1,12 +1,7 @@
 // Finance App File: frontend/src/components/payment/UploadModal.jsx
 // Purpose: Upload modal UI for bill file parsing.
 
-export default function UploadModal({
-  open,
-  uploading,
-  onClose,
-  onUpload
-}) {
+export default function UploadModal({ open, uploading, onClose, onUpload }) {
   if (!open) {
     return null;
   }
@@ -19,12 +14,7 @@ export default function UploadModal({
             <h3>Upload files</h3>
             <p>Select and upload the files of your choice</p>
           </div>
-          <button
-            type="button"
-            className="upload-modal-close"
-            onClick={onClose}
-            aria-label="Close upload modal"
-          >
+          <button type="button" className="upload-modal-close" onClick={onClose} aria-label="Close upload modal">
             x
           </button>
         </div>
@@ -46,17 +36,13 @@ export default function UploadModal({
 
             <label className={`upload-modal-action-btn btn btn-secondary ${uploading ? 'is-disabled' : ''}`}>
               <span>Use Camera</span>
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={onUpload}
-                disabled={uploading}
-              />
+              <input type="file" accept="image/*" capture="environment" onChange={onUpload} disabled={uploading} />
             </label>
           </div>
 
-          <p className="upload-modal-hint">Tip: On phone, use camera for receipts and bills. On desktop, use Browse File.</p>
+          <p className="upload-modal-hint">
+            Tip: On phone, use camera for receipts and bills. On desktop, use Browse File.
+          </p>
         </div>
 
         {uploading && <p className="muted-text">Uploading and scanning bill...</p>}

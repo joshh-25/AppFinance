@@ -168,7 +168,9 @@ const UPLOAD_FIELD_LABELS = {
 };
 
 function cleanTextValue(value) {
-  return String(value ?? '').replace(/\s+/g, ' ').trim();
+  return String(value ?? '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function normalizeBillTypeValue(value) {
@@ -206,7 +208,9 @@ function shouldIncludeBillRowForType(row, billType) {
 }
 
 function canonicalUploadKey(key) {
-  return String(key ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  return String(key ?? '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
 }
 
 function normalizeDateValue(value) {
@@ -315,7 +319,11 @@ function normalizeAmountValue(value) {
     // Also normalize comma+space cases.
     .replace(/,\s+(?=\d{3}(?:\D|$))/g, ',');
   const tokens = raw.match(/-?\d{1,3}(?:,\d{3})*(?:\.\d{2})|-?\d+\.\d{2}/g);
-  const normalizedTokens = (tokens || normalizedGrouping.match(/-?\d{1,3}(?:[,\s]\d{3})*(?:\.\d{2})|-?\d+\.\d{2}/g) || [])
+  const normalizedTokens = (
+    tokens ||
+    normalizedGrouping.match(/-?\d{1,3}(?:[,\s]\d{3})*(?:\.\d{2})|-?\d+\.\d{2}/g) ||
+    []
+  )
     .map((token) => token.replace(/[,\s]/g, ''))
     .filter((token) => /^-?\d+(?:\.\d{2})$/.test(token));
   if (normalizedTokens.length > 0) {
@@ -324,7 +332,7 @@ function normalizeAmountValue(value) {
   const cleaned = normalizedGrouping
     .replace(/[,\s]/g, '')
     .replace(/^(php|usd|eur|gbp|sgd|aud|cad|p)/i, '')
-    .replace(/[^\d.\-]/g, '')
+    .replace(/[^\d.-]/g, '')
     .trim();
   return cleaned || raw;
 }
@@ -388,44 +396,29 @@ function parseUploadFieldsFromText(text) {
     return '';
   })();
 
-  const customerName = pickTextMatch(text, [
-    /\bCustomer\s*Name[:\s-]*([^\n]+?)(?:\s+Business\s*Style[:\s-]|$)/i
-  ]);
-  const addressLine = pickTextMatch(text, [
-    /\bAddress[:\s-]*([^\n]+?)(?:\s+TIN\s*\(|$)/i
-  ]);
+  const customerName = pickTextMatch(text, [/\bCustomer\s*Name[:\s-]*([^\n]+?)(?:\s+Business\s*Style[:\s-]|$)/i]);
+  const addressLine = pickTextMatch(text, [/\bAddress[:\s-]*([^\n]+?)(?:\s+TIN\s*\(|$)/i]);
   const propertyFromAddress = cleanTextValue(addressLine.split(',')[0] || '');
 
   return {
-    bill_type: pickTextMatch(text, [
-      /\bBill\s*Type[:\s-]*([A-Za-z_ ]+)/i,
-      /\bUtility\s*Type[:\s-]*([A-Za-z_ ]+)/i
-    ]) || inferredBillType,
-    dd: customerName || pickTextMatch(text, [
-      /\bProperty\/DD[:\s-]*([A-Za-z0-9 \-]+)/i,
-      /\bDD[:\s-]*([A-Za-z0-9 \-]+)/i
-    ]),
-    property: propertyFromAddress || pickTextMatch(text, [
-      /\bProperty[:\s-]*([A-Za-z0-9 \-]+)/i
-    ]),
-    internet_provider: pickTextMatch(text, [
-      /\bInternet\s*Provider[:\s-]*([^\n]+)/i,
-      /\bProvider[:\s-]*([^\n]+)/i
-    ]),
+    bill_type:
+      pickTextMatch(text, [/\bBill\s*Type[:\s-]*([A-Za-z_ ]+)/i, /\bUtility\s*Type[:\s-]*([A-Za-z_ ]+)/i]) ||
+      inferredBillType,
+    dd:
+      customerName || pickTextMatch(text, [/\bProperty\/DD[:\s-]*([A-Za-z0-9 -]+)/i, /\bDD[:\s-]*([A-Za-z0-9 -]+)/i]),
+    property: propertyFromAddress || pickTextMatch(text, [/\bProperty[:\s-]*([A-Za-z0-9 -]+)/i]),
+    internet_provider: pickTextMatch(text, [/\bInternet\s*Provider[:\s-]*([^\n]+)/i, /\bProvider[:\s-]*([^\n]+)/i]),
     internet_account_no: pickTextMatch(text, [
-      /\bInternet\s*Account\s*No\.?[:\s-]*([A-Za-z0-9\-]+)/i,
-      /\bCustomer\s*Acct\.?\s*No\.?[:\s-]*([A-Za-z0-9\-]+)/i,
-      /\bAccount\s*(?:No|Number)\.?\s*[:\s-]*([A-Za-z0-9\-]+)/i
+      /\bInternet\s*Account\s*No\.?[:\s-]*([A-Za-z0-9-]+)/i,
+      /\bCustomer\s*Acct\.?\s*No\.?[:\s-]*([A-Za-z0-9-]+)/i,
+      /\bAccount\s*(?:No|Number)\.?\s*[:\s-]*([A-Za-z0-9-]+)/i
     ]),
-    wifi_amount: pickTextMatch(text, [
-      /\bAmount\s*Due[:\s-]*([^\n]+)/i,
-      /\bTotal(?:\s*Amount)?[:\s-]*([^\n]+)/i
-    ]),
+    wifi_amount: pickTextMatch(text, [/\bAmount\s*Due[:\s-]*([^\n]+)/i, /\bTotal(?:\s*Amount)?[:\s-]*([^\n]+)/i]),
     wifi_due_date: pickTextMatch(text, [/\bDue\s*Date[:\s-]*([^\n]+)/i]),
     wifi_payment_status: pickTextMatch(text, [/\bPayment\s*Status[:\s-]*([^\n]+)/i]),
     water_account_no: pickTextMatch(text, [
-      /\bWater\s*Account\s*No\.?[:\s-]*([A-Za-z0-9\-]+)/i,
-      /\bCustomer\s*Acct\.?\s*No\.?[:\s-]*([A-Za-z0-9\-]+)/i
+      /\bWater\s*Account\s*No\.?[:\s-]*([A-Za-z0-9-]+)/i,
+      /\bCustomer\s*Acct\.?\s*No\.?[:\s-]*([A-Za-z0-9-]+)/i
     ]),
     water_amount: pickTextMatch(text, [
       /\bTotal\s*Balance\s*Due[^\n]*?([0-9]{1,3}(?:[, ]?[0-9]{3})*(?:\.\d{2})|[0-9]+\.\d{2})/i,
@@ -443,19 +436,19 @@ function parseUploadFieldsFromText(text) {
     ]),
     water_payment_status: pickTextMatch(text, [/\bPayment\s*Status[:\s-]*([^\n]+)/i]),
     electricity_account_no: pickTextMatch(text, [
-      /\bElectricity\s*Account\s*No\.?[:\s-]*([A-Za-z0-9\-]+)/i,
-      /\bCustomer\s*Acct\.?\s*No\.?[:\s-]*([A-Za-z0-9\-]+)/i,
-      /\bCustomer\s*Acct\.?\s*No\.?\s*[:\s-]*([A-Za-z0-9\-]+)/i,
-      /\bMeter\s*No\.?[:\s-]*([A-Za-z0-9\-]+)/i
+      /\bElectricity\s*Account\s*No\.?[:\s-]*([A-Za-z0-9-]+)/i,
+      /\bCustomer\s*Acct\.?\s*No\.?[:\s-]*([A-Za-z0-9-]+)/i,
+      /\bCustomer\s*Acct\.?\s*No\.?\s*[:\s-]*([A-Za-z0-9-]+)/i,
+      /\bMeter\s*No\.?[:\s-]*([A-Za-z0-9-]+)/i
     ]),
     electricity_amount: pickTextMatch(text, [
-      /\bTOTAL\s*CURRENT\s*BILL\s*AMOUNT[^\d\-]*([0-9][0-9,]*\.\d{2})/i,
-      /\bCurrent\s*Charges[^\d\-]*([0-9][0-9,]*\.\d{2})/i,
-      /\bTotal\s*Amount\s*Due[^\d\-]*([0-9][0-9,]*\.\d{2})/i,
-      /\bAmount\s*Due[^\d\-]*([0-9][0-9,]*\.\d{2})/i
+      /\bTOTAL\s*CURRENT\s*BILL\s*AMOUNT[^\d-]*([0-9][0-9,]*\.\d{2})/i,
+      /\bCurrent\s*Charges[^\d-]*([0-9][0-9,]*\.\d{2})/i,
+      /\bTotal\s*Amount\s*Due[^\d-]*([0-9][0-9,]*\.\d{2})/i,
+      /\bAmount\s*Due[^\d-]*([0-9][0-9,]*\.\d{2})/i
     ]),
     electricity_total_amount_due: pickTextMatch(text, [
-      /\bTotal\s*Amount\s*Due[^\d\-]*([0-9]{1,3}(?:[,\s][0-9]{3})*(?:\.\d{2})|[0-9]+(?:\.\d{2}))/i
+      /\bTotal\s*Amount\s*Due[^\d-]*([0-9]{1,3}(?:[,\s][0-9]{3})*(?:\.\d{2})|[0-9]+(?:\.\d{2}))/i
     ]),
     electricity_due_date: pickTextMatch(text, [
       /\bCurrent\s*Bill\s*Due\s*Date[:\s-]*([0-9]{1,2}-[A-Za-z]{3}-[0-9]{4})/i,
@@ -515,7 +508,7 @@ function parseAccountNoFromFilename(filename) {
 }
 
 function addUploadFileFallback(data, filename, billType) {
-  const next = (data && typeof data === 'object') ? { ...data } : {};
+  const next = data && typeof data === 'object' ? { ...data } : {};
   const name = cleanTextValue(filename);
   if (name === '') {
     return next;
@@ -524,9 +517,12 @@ function addUploadFileFallback(data, filename, billType) {
   const genericAccount = parseAccountNoFromFilename(name);
 
   if (billType === 'water') {
-    if (cleanTextValue(next.water_payment_status) === '' && (
-      cleanTextValue(next.water_amount) !== '' || cleanTextValue(next.water_due_date) !== '' || cleanTextValue(next.water_account_no) !== ''
-    )) {
+    if (
+      cleanTextValue(next.water_payment_status) === '' &&
+      (cleanTextValue(next.water_amount) !== '' ||
+        cleanTextValue(next.water_due_date) !== '' ||
+        cleanTextValue(next.water_account_no) !== '')
+    ) {
       next.water_payment_status = 'Unpaid';
     }
   }
@@ -547,7 +543,12 @@ function safeJsonParse(value) {
   }
 
   try {
-    return JSON.parse(value.replace(/```json/g, '').replace(/```/g, '').trim());
+    return JSON.parse(
+      value
+        .replace(/```json/g, '')
+        .replace(/```/g, '')
+        .trim()
+    );
   } catch (error) {
     return value;
   }
@@ -559,9 +560,7 @@ function normalizeUploadData(input) {
   if (Array.isArray(envelope) && envelope.length > 0) {
     envelope = envelope[0];
   }
-  const envelopeText = envelope && typeof envelope === 'object'
-    ? extractUploadText(envelope)
-    : '';
+  const envelopeText = envelope && typeof envelope === 'object' ? extractUploadText(envelope) : '';
 
   function unwrapPayload(value) {
     let current = safeJsonParse(value);
@@ -633,23 +632,39 @@ function normalizeUploadData(input) {
   const uploadText = extractUploadText(data) || envelopeText;
   const parsedFromText = parseUploadFieldsFromText(uploadText);
   const lookup = buildUploadLookup({ ...data, ...parsedFromText });
-  const filenameAccountNo = parseAccountNoFromFilename(
-    pickUploadValue(lookup, ['filename', 'file_name', 'name'], '')
+  const filenameAccountNo = parseAccountNoFromFilename(pickUploadValue(lookup, ['filename', 'file_name', 'name'], ''));
+  const resolvedBillType = pickUploadValue(
+    lookup,
+    ['bill_type', 'billType', 'utility_type'],
+    parsedFromText.bill_type || ''
   );
-  const resolvedBillType = pickUploadValue(lookup, ['bill_type', 'billType', 'utility_type'], parsedFromText.bill_type || '');
 
   const wifiAmount = normalizeAmountValue(
-    pickUploadValue(lookup, ['wifi_amount', 'wifiAmount', 'internet_amount', 'amount', 'amount_due'], parsedFromText.wifi_amount || '')
+    pickUploadValue(
+      lookup,
+      ['wifi_amount', 'wifiAmount', 'internet_amount', 'amount', 'amount_due'],
+      parsedFromText.wifi_amount || ''
+    )
   );
   const waterAmount = normalizeAmountValue(
     pickUploadValue(
       lookup,
-      ['water_amount', 'waterAmount', 'total_balance_due', 'totalBalanceDue', 'amount', 'amount_due', 'total_amount_due', 'totalAmountDue'],
+      [
+        'water_amount',
+        'waterAmount',
+        'total_balance_due',
+        'totalBalanceDue',
+        'amount',
+        'amount_due',
+        'total_amount_due',
+        'totalAmountDue'
+      ],
       parsedFromText.water_amount || ''
     )
   );
   const totalAmountDueValue = normalizeAmountValue(
-    parsedFromText.electricity_total_amount_due || pickUploadValue(lookup, ['total_amount_due', 'totalAmountDue', 'amount_due', 'amountDue'], '')
+    parsedFromText.electricity_total_amount_due ||
+    pickUploadValue(lookup, ['total_amount_due', 'totalAmountDue', 'amount_due', 'amountDue'], '')
   );
   const electricityAmountCandidates = [
     totalAmountDueValue,
@@ -662,18 +677,14 @@ function normalizeUploadData(input) {
   const electricityAmountFromPayload = normalizeAmountValue(
     cleanTextValue(data.electricity_amount ?? data.electricityAmount ?? '')
   );
-  const electricityAmount = electricityAmountFromPayload !== ''
-    ? electricityAmountFromPayload
-    : (electricityAmountCandidates[0] || '');
+  const electricityAmount =
+    electricityAmountFromPayload !== '' ? electricityAmountFromPayload : electricityAmountCandidates[0] || '';
   const associationDues = normalizeAmountValue(
     pickUploadValue(lookup, ['association_dues', 'associationDues'], parsedFromText.association_dues || '')
   );
   const normalizedTotalAmountDue = normalizeAmountValue(
-    parsedFromText.electricity_total_amount_due || pickUploadValue(
-      lookup,
-      ['total_amount_due', 'totalAmountDue', 'amount_due', 'amountDue', 'subtotal'],
-      ''
-    )
+    parsedFromText.electricity_total_amount_due ||
+    pickUploadValue(lookup, ['total_amount_due', 'totalAmountDue', 'amount_due', 'amountDue', 'subtotal'], '')
   );
 
   return {
@@ -685,12 +696,26 @@ function normalizeUploadData(input) {
     classification: pickUploadValue(lookup, ['classification']),
     deposit: normalizeAmountValue(pickUploadValue(lookup, ['deposit'])),
     rent: normalizeAmountValue(pickUploadValue(lookup, ['rent'])),
-    internet_provider: pickUploadValue(lookup, ['internet_provider', 'internetProvider', 'provider'], parsedFromText.internet_provider || ''),
-    internet_account_no: pickUploadValue(lookup, ['internet_account_no', 'internetAccountNo', 'account_no', 'accountNo'], parsedFromText.internet_account_no || ''),
+    internet_provider: pickUploadValue(
+      lookup,
+      ['internet_provider', 'internetProvider', 'provider'],
+      parsedFromText.internet_provider || ''
+    ),
+    internet_account_no: pickUploadValue(
+      lookup,
+      ['internet_account_no', 'internetAccountNo', 'account_no', 'accountNo'],
+      parsedFromText.internet_account_no || ''
+    ),
     wifi_amount: wifiAmount,
-    wifi_due_date: normalizeDateValue(pickUploadValue(lookup, ['wifi_due_date', 'wifiDueDate', 'internet_due_date'], parsedFromText.wifi_due_date || '')),
-    wifi_payment_status: pickUploadValue(lookup, ['wifi_payment_status', 'wifiPaymentStatus', 'payment_status'], parsedFromText.wifi_payment_status || '')
-      || (wifiAmount !== '' ? 'Unpaid' : ''),
+    wifi_due_date: normalizeDateValue(
+      pickUploadValue(lookup, ['wifi_due_date', 'wifiDueDate', 'internet_due_date'], parsedFromText.wifi_due_date || '')
+    ),
+    wifi_payment_status:
+      pickUploadValue(
+        lookup,
+        ['wifi_payment_status', 'wifiPaymentStatus', 'payment_status'],
+        parsedFromText.wifi_payment_status || ''
+      ) || (wifiAmount !== '' ? 'Unpaid' : ''),
     water_account_no: pickUploadValue(
       lookup,
       ['water_account_no', 'waterAccountNo', 'wateracctno', 'wateracctnumber'],
@@ -704,27 +729,51 @@ function normalizeUploadData(input) {
         parsedFromText.water_due_date || ''
       )
     ),
-    water_payment_status: pickUploadValue(lookup, ['water_payment_status', 'waterPaymentStatus', 'payment_status'], parsedFromText.water_payment_status || '')
-      || (waterAmount !== '' ? 'Unpaid' : ''),
-    electricity_account_no: parsedFromText.electricity_account_no || pickUploadValue(
-      lookup,
-      ['electricity_account_no', 'electricityAccountNo', 'customer_acct_no', 'customerAcctNo', 'meter_no', 'meterNo'],
-      filenameAccountNo
-    ),
+    water_payment_status:
+      pickUploadValue(
+        lookup,
+        ['water_payment_status', 'waterPaymentStatus', 'payment_status'],
+        parsedFromText.water_payment_status || ''
+      ) || (waterAmount !== '' ? 'Unpaid' : ''),
+    electricity_account_no:
+      parsedFromText.electricity_account_no ||
+      pickUploadValue(
+        lookup,
+        ['electricity_account_no', 'electricityAccountNo', 'customer_acct_no', 'customerAcctNo', 'meter_no', 'meterNo'],
+        filenameAccountNo
+      ),
     electricity_amount: electricityAmount,
     electricity_due_date: normalizeDateValue(
-      parsedFromText.electricity_due_date || pickUploadValue(
+      parsedFromText.electricity_due_date ||
+      pickUploadValue(
         lookup,
-        ['electricity_due_date', 'electricityDueDate', 'current_bill_due_date', 'currentBillDueDate', 'due_date', 'dueDate'],
+        [
+          'electricity_due_date',
+          'electricityDueDate',
+          'current_bill_due_date',
+          'currentBillDueDate',
+          'due_date',
+          'dueDate'
+        ],
         ''
       )
     ),
-    electricity_payment_status: pickUploadValue(lookup, ['electricity_payment_status', 'electricityPaymentStatus', 'payment_status'], parsedFromText.electricity_payment_status || '')
-      || (electricityAmount !== '' ? 'Unpaid' : ''),
+    electricity_payment_status:
+      pickUploadValue(
+        lookup,
+        ['electricity_payment_status', 'electricityPaymentStatus', 'payment_status'],
+        parsedFromText.electricity_payment_status || ''
+      ) || (electricityAmount !== '' ? 'Unpaid' : ''),
     association_dues: associationDues,
-    association_due_date: normalizeDateValue(pickUploadValue(lookup, ['association_due_date', 'associationDueDate'], parsedFromText.association_due_date || '')),
-    association_payment_status: pickUploadValue(lookup, ['association_payment_status', 'associationPaymentStatus', 'payment_status'], parsedFromText.association_payment_status || '')
-      || (associationDues !== '' ? 'Unpaid' : ''),
+    association_due_date: normalizeDateValue(
+      pickUploadValue(lookup, ['association_due_date', 'associationDueDate'], parsedFromText.association_due_date || '')
+    ),
+    association_payment_status:
+      pickUploadValue(
+        lookup,
+        ['association_payment_status', 'associationPaymentStatus', 'payment_status'],
+        parsedFromText.association_payment_status || ''
+      ) || (associationDues !== '' ? 'Unpaid' : ''),
     total_amount_due: normalizedTotalAmountDue,
     real_property_tax: normalizeAmountValue(pickUploadValue(lookup, ['real_property_tax', 'realPropertyTax'])),
     rpt_payment_status: pickUploadValue(lookup, ['rpt_payment_status', 'rptPaymentStatus']),
@@ -756,11 +805,22 @@ function detectBillTypeFromData(data) {
     return 'association_dues';
   }
 
-  if (data.electricity_amount || data.electricity_account_no || data.electricity_due_date || data.electricity_payment_status) {
+  if (
+    data.electricity_amount ||
+    data.electricity_account_no ||
+    data.electricity_due_date ||
+    data.electricity_payment_status
+  ) {
     return 'electricity';
   }
 
-  if (data.wifi_amount || data.internet_account_no || data.internet_provider || data.wifi_due_date || data.wifi_payment_status) {
+  if (
+    data.wifi_amount ||
+    data.internet_account_no ||
+    data.internet_provider ||
+    data.wifi_due_date ||
+    data.wifi_payment_status
+  ) {
     return 'internet';
   }
 
@@ -785,9 +845,10 @@ function validateUploadExtraction(data, requiredBillType) {
 
   const detectedBillType = detectBillTypeFromData(data);
   const requiredLabels = requiredFields.map((field) => UPLOAD_FIELD_LABELS[field] || field);
-  const moduleMismatch = detectedBillType !== billType
-    ? ` Detected bill type looks like ${detectedBillType.replace('_', ' ')}; upload it from the matching module tab.`
-    : '';
+  const moduleMismatch =
+    detectedBillType !== billType
+      ? ` Detected bill type looks like ${detectedBillType.replace('_', ' ')}; upload it from the matching module tab.`
+      : '';
 
   return {
     valid: false,
@@ -973,7 +1034,10 @@ function buildEditLock(source, billType) {
 function toFriendlyErrorMessage(rawMessage) {
   const message = String(rawMessage || '').trim();
   const lower = message.toLowerCase();
-  if (lower.includes('record for this dd/property and bill type already exists') || lower.includes('property and bill type already exists')) {
+  if (
+    lower.includes('record for this dd/property and bill type already exists') ||
+    lower.includes('property and bill type already exists')
+  ) {
     return 'This property already has a saved row for that bill type. Open the existing row and click Update.';
   }
   if (lower.includes('dd or property is required') || lower.includes('select a property from property list')) {
@@ -1038,9 +1102,10 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
   const currentBaseRoute = `/bills/${normalizedBillMode}`;
   const forcedBillType = BILL_MODE_TO_TYPE[normalizedBillMode];
   const currentFlowIndex = BILL_FLOW_MODES.indexOf(normalizedBillMode);
-  const nextFlowPath = currentFlowIndex >= 0 && currentFlowIndex < BILL_FLOW_MODES.length - 1
-    ? `/bills/${BILL_FLOW_MODES[currentFlowIndex + 1]}`
-    : null;
+  const nextFlowPath =
+    currentFlowIndex >= 0 && currentFlowIndex < BILL_FLOW_MODES.length - 1
+      ? `/bills/${BILL_FLOW_MODES[currentFlowIndex + 1]}`
+      : null;
   const isLastFlowStep = currentFlowIndex === BILL_FLOW_MODES.length - 1;
   const finalStepBackPath = '/property-records';
   const activeBillType = forcedBillType;
@@ -1049,15 +1114,13 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
   const billsScopedSnapshot = globalEditSnapshot.scopes?.bills || { active: false, context: null };
   const isRecordsEditMode = billsScopedSnapshot.active === true && billsScopedSnapshot.context?.source === 'records';
   const isEditMode = editingBillId !== null;
-  const formModeLabel = isRecordsEditMode && isEditMode
-    ? 'Edit Mode (From Records)'
-    : isEditMode
-      ? 'Edit Mode'
-      : 'Create Mode';
-  const isDirty = useMemo(() => (
-    JSON.stringify(form) !== JSON.stringify(baselineSnapshot.form) ||
-    comboSearch !== baselineSnapshot.comboSearch
-  ), [form, comboSearch, baselineSnapshot]);
+  const formModeLabel =
+    isRecordsEditMode && isEditMode ? 'Edit Mode (From Records)' : isEditMode ? 'Edit Mode' : 'Create Mode';
+  const isDirty = useMemo(
+    () =>
+      JSON.stringify(form) !== JSON.stringify(baselineSnapshot.form) || comboSearch !== baselineSnapshot.comboSearch,
+    [form, comboSearch, baselineSnapshot]
+  );
 
   useEffect(() => {
     setPanelMode(isListRoute ? 'table' : 'form');
@@ -1106,7 +1169,8 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
     const contextBillId = getContextBillIdByType(context, activeBillType);
 
     const nextForm = mapRecordsContextToForm(context, activeBillType);
-    const nextLabel = (nextForm.property && String(nextForm.property).trim() !== '') ? nextForm.property : nextForm.dd || '';
+    const nextLabel =
+      nextForm.property && String(nextForm.property).trim() !== '' ? nextForm.property : nextForm.dd || '';
     const nextBaseline = {
       form: nextForm,
       comboSearch: nextLabel
@@ -1137,6 +1201,7 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
       clearScopedGlobalEditMode('bills');
       window.sessionStorage.removeItem(RECORDS_EDIT_CONTEXT_KEY);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeBillType, billSelectionKey, editDraftKey, normalizedBillMode]);
 
   useEffect(() => {
@@ -1165,6 +1230,7 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
     setEditingBillId(null);
     setEditLock(INITIAL_EDIT_LOCK);
     clearGlobalEditModeIfNotRecords();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeBillType, billSelectionKey, editDraftKey, fromPropertyRecordsNext]);
 
   useEffect(() => {
@@ -1218,9 +1284,11 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
       setComboSearch(restoredComboSearch);
       setBaselineSnapshot(restoredBaseline);
       setEditingBillId(draft.editingBillId);
-      setEditLock(draft.editLock && typeof draft.editLock === 'object'
-        ? { ...INITIAL_EDIT_LOCK, ...draft.editLock }
-        : buildEditLock(draft.form || restoredForm, activeBillType));
+      setEditLock(
+        draft.editLock && typeof draft.editLock === 'object'
+          ? { ...INITIAL_EDIT_LOCK, ...draft.editLock }
+          : buildEditLock(draft.form || restoredForm, activeBillType)
+      );
       setPanelMode('form');
       setBillsGlobalEditMode({
         source: 'bills',
@@ -1231,6 +1299,7 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
     } catch {
       window.sessionStorage.removeItem(editDraftKey);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeBillType, editDraftKey, normalizedBillMode]);
 
   useEffect(() => {
@@ -1269,9 +1338,7 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
         return;
       }
 
-      const persistedForm = selection.form && typeof selection.form === 'object'
-        ? selection.form
-        : null;
+      const persistedForm = selection.form && typeof selection.form === 'object' ? selection.form : null;
       const persistedPropertyListId = Number(selection.property_list_id || persistedForm?.property_list_id || 0);
       const persistedDd = String(selection.dd || persistedForm?.dd || '');
       const persistedProperty = String(selection.property || persistedForm?.property || '');
@@ -1380,33 +1447,30 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
     const baseContextLabel = propertyValue !== '' ? propertyValue : ddValue;
     const contextLabel = baseContextLabel;
     const shouldStartFreshFromPropertyRecords = fromPropertyRecordsNext === true;
-    const persistedForm = !shouldStartFreshFromPropertyRecords && selection?.form && typeof selection.form === 'object'
-      ? selection.form
-      : null;
+    const persistedForm =
+      !shouldStartFreshFromPropertyRecords && selection?.form && typeof selection.form === 'object'
+        ? selection.form
+        : null;
     const nextComboSearch = String(
-      shouldStartFreshFromPropertyRecords
-        ? (contextLabel || '')
-        : (selection?.comboSearch || contextLabel || '')
+      shouldStartFreshFromPropertyRecords ? contextLabel || '' : selection?.comboSearch || contextLabel || ''
     );
     const nextPropertyListId = Number(
       shouldStartFreshFromPropertyRecords
-        ? (contextPropertyListId || 0)
-        : (selection?.property_list_id || persistedForm?.property_list_id || contextPropertyListId || 0)
+        ? contextPropertyListId || 0
+        : selection?.property_list_id || persistedForm?.property_list_id || contextPropertyListId || 0
     );
     const nextDdValue = String(
-      shouldStartFreshFromPropertyRecords
-        ? (ddValue || '')
-        : (selection?.dd || persistedForm?.dd || ddValue || '')
+      shouldStartFreshFromPropertyRecords ? ddValue || '' : selection?.dd || persistedForm?.dd || ddValue || ''
     );
     const nextPropertyValue = String(
       shouldStartFreshFromPropertyRecords
-        ? (propertyValue || '')
-        : (selection?.property || persistedForm?.property || propertyValue || '')
+        ? propertyValue || ''
+        : selection?.property || persistedForm?.property || propertyValue || ''
     );
     const nextBillingPeriod = String(
       shouldStartFreshFromPropertyRecords
-        ? (context.billing_period || '')
-        : (selection?.billing_period || persistedForm?.billing_period || context.billing_period || '')
+        ? context.billing_period || ''
+        : selection?.billing_period || persistedForm?.billing_period || context.billing_period || ''
     );
     const prefilledCreateForm = {
       ...buildClearedFormForBillType(activeBillType),
@@ -1444,10 +1508,7 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
     setHasAppliedPropertyContext(true);
   }, [activeBillType, editingBillId, isDirty, hasAppliedPropertyContext, billSelectionKey, fromPropertyRecordsNext]);
 
-  const {
-    data: propertyRecords = [],
-    isLoading: loadingPropertyRecords
-  } = useQuery({
+  const { data: propertyRecords = [], isLoading: loadingPropertyRecords } = useQuery({
     queryKey: ['property-record-options'],
     queryFn: fetchPropertyRecords,
     enabled: true
@@ -1530,7 +1591,10 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
       return next;
     });
 
-    const label = (formRef.current.property && String(formRef.current.property).trim() !== '') ? formRef.current.property : formRef.current.dd || '';
+    const label =
+      formRef.current.property && String(formRef.current.property).trim() !== ''
+        ? formRef.current.property
+        : formRef.current.dd || '';
     if (label) {
       comboSearchRef.current = label;
       setComboSearch(label);
@@ -1629,7 +1693,11 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
 
   async function saveBill() {
     const currentForm = formRef.current;
-    if (Number(currentForm.property_list_id || 0) <= 0 && String(currentForm.dd || '').trim() === '' && String(currentForm.property || '').trim() === '') {
+    if (
+      Number(currentForm.property_list_id || 0) <= 0 &&
+      String(currentForm.dd || '').trim() === '' &&
+      String(currentForm.property || '').trim() === ''
+    ) {
       showToast('error', 'Select a Property/DD before saving.');
       return false;
     }
@@ -1638,22 +1706,13 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
 
     try {
       const shouldUpdate = editingBillId !== null;
-      const runWaterUpdate = () => updateBill(
-        editingBillId,
-        buildUpdatePayloadForType(currentForm, 'water', editLock)
-      );
-      const runElectricityUpdate = () => updateBill(
-        editingBillId,
-        buildUpdatePayloadForType(currentForm, 'electricity', editLock)
-      );
-      const runInternetUpdate = () => updateBill(
-        editingBillId,
-        buildUpdatePayloadForType(currentForm, 'internet', editLock)
-      );
-      const runAssociationUpdate = () => updateBill(
-        editingBillId,
-        buildUpdatePayloadForType(currentForm, 'association_dues', editLock)
-      );
+      const runWaterUpdate = () => updateBill(editingBillId, buildUpdatePayloadForType(currentForm, 'water', editLock));
+      const runElectricityUpdate = () =>
+        updateBill(editingBillId, buildUpdatePayloadForType(currentForm, 'electricity', editLock));
+      const runInternetUpdate = () =>
+        updateBill(editingBillId, buildUpdatePayloadForType(currentForm, 'internet', editLock));
+      const runAssociationUpdate = () =>
+        updateBill(editingBillId, buildUpdatePayloadForType(currentForm, 'association_dues', editLock));
 
       const createPayload = buildTabScopedPayload(currentForm, activeBillType);
 
@@ -1671,11 +1730,13 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
       } else {
         result = await createBill(createPayload);
       }
-      showToast('success', result.message || (shouldUpdate ? 'Record updated successfully.' : 'Record saved successfully.'));
+      showToast(
+        'success',
+        result.message || (shouldUpdate ? 'Record updated successfully.' : 'Record saved successfully.')
+      );
       const nextForm = buildPostSaveForm(currentForm, activeBillType);
-      const nextLabel = (nextForm.property && String(nextForm.property).trim() !== '')
-        ? nextForm.property
-        : (nextForm.dd || '');
+      const nextLabel =
+        nextForm.property && String(nextForm.property).trim() !== '' ? nextForm.property : nextForm.dd || '';
       formRef.current = nextForm;
       setForm(nextForm);
       comboSearchRef.current = nextLabel;
@@ -1694,14 +1755,17 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
       };
       baselineSnapshotRef.current = nextBaseline;
       setBaselineSnapshot(nextBaseline);
-      window.sessionStorage.setItem(billSelectionKey, JSON.stringify({
-        form: nextForm,
-        property_list_id: Number(nextForm.property_list_id || 0),
-        dd: nextForm.dd || '',
-        property: nextForm.property || '',
-        billing_period: nextForm.billing_period || '',
-        comboSearch: nextLabel
-      }));
+      window.sessionStorage.setItem(
+        billSelectionKey,
+        JSON.stringify({
+          form: nextForm,
+          property_list_id: Number(nextForm.property_list_id || 0),
+          dd: nextForm.dd || '',
+          property: nextForm.property || '',
+          billing_period: nextForm.billing_period || '',
+          comboSearch: nextLabel
+        })
+      );
       if (panelMode === 'table') {
         await refetchBillRows();
       }
@@ -1714,14 +1778,15 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
     }
   }
 
-  const visibleBillRows = useMemo(() => (
-    billRows.filter((row) => shouldIncludeBillRowForType(row, activeBillType))
-  ), [billRows, activeBillType]);
+  const visibleBillRows = useMemo(
+    () => billRows.filter((row) => shouldIncludeBillRowForType(row, activeBillType)),
+    [billRows, activeBillType]
+  );
 
-  const billTableColumns = useMemo(() => [
-    ['display_property_dd', 'Property / DD'],
-    ...(BILL_TYPE_FIELDS[activeBillType] || [])
-  ], [activeBillType]);
+  const billTableColumns = useMemo(
+    () => [['display_property_dd', 'Property / DD'], ...(BILL_TYPE_FIELDS[activeBillType] || [])],
+    [activeBillType]
+  );
 
   const filteredBillRows = useMemo(() => {
     const query = tableSearch.trim().toLowerCase();
@@ -1729,14 +1794,17 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
       return visibleBillRows;
     }
 
-    return visibleBillRows.filter((row) => (
+    return visibleBillRows.filter((row) =>
       billTableColumns.some(([key]) => {
-        const rawValue = key === 'display_property_dd'
-          ? (row.property && String(row.property).trim() !== '' ? row.property : row.dd || '')
-          : row[key] || '';
+        const rawValue =
+          key === 'display_property_dd'
+            ? row.property && String(row.property).trim() !== ''
+              ? row.property
+              : row.dd || ''
+            : row[key] || '';
         return String(rawValue).toLowerCase().includes(query);
       })
-    ));
+    );
   }, [visibleBillRows, tableSearch, billTableColumns]);
 
   const totalPages = Math.max(1, Math.ceil(filteredBillRows.length / ROWS_PER_PAGE));
@@ -1753,7 +1821,7 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
       property_list_id: Number(row.property_list_id || 0),
       bill_type: activeBillType
     };
-    const nextLabel = (row.property && String(row.property).trim() !== '') ? row.property : row.dd || '';
+    const nextLabel = row.property && String(row.property).trim() !== '' ? row.property : row.dd || '';
 
     formRef.current = nextForm;
     comboSearchRef.current = nextLabel;
@@ -1774,20 +1842,6 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
     baselineSnapshotRef.current = nextBaseline;
     setBaselineSnapshot(nextBaseline);
     setPanelMode('form');
-  }
-
-  async function handleViewRecord() {
-    setEditingBillId(null);
-    setEditLock(INITIAL_EDIT_LOCK);
-    window.sessionStorage.removeItem(editDraftKey);
-    clearGlobalEditModeIfNotRecords();
-    setPanelMode('table');
-    setTableSearch('');
-    setTablePage(1);
-    await refetchBillRows();
-    navigate(`${currentBaseRoute}/list`, {
-      state: fromPropertyRecordsNext ? { fromPropertyRecordsNext: true } : null
-    });
   }
 
   function handleBackToForm() {
@@ -1875,6 +1929,7 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
     return () => {
       window.removeEventListener('keydown', handleShortcut);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [panelMode, saving, uploading, editingBillId, activeBillType]);
 
   function handleComboInputChange(event) {
@@ -1911,9 +1966,9 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
     }
 
     const normalizedSearch = nextSearch.trim().toLowerCase();
-    const matchedRecord = propertyRecords.find((record) => (
-      getPropertyRecordLabel(record).trim().toLowerCase() === normalizedSearch
-    ));
+    const matchedRecord = propertyRecords.find(
+      (record) => getPropertyRecordLabel(record).trim().toLowerCase() === normalizedSearch
+    );
     if (matchedRecord) {
       handleOptionSelect(matchedRecord);
     }
