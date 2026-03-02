@@ -106,6 +106,7 @@ export default function PropertyRecordsPage() {
   const [saving, setSaving] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [fieldsAnimating, setFieldsAnimating] = useState(false);
   const [confirmState, setConfirmState] = useState({
     open: false,
     action: null,
@@ -125,6 +126,12 @@ export default function PropertyRecordsPage() {
   useEffect(() => {
     setPanelMode(isListRoute ? 'table' : 'form');
   }, [isListRoute]);
+
+  useEffect(() => {
+    setFieldsAnimating(true);
+    const timer = window.setTimeout(() => setFieldsAnimating(false), 220);
+    return () => window.clearTimeout(timer);
+  }, [panelMode]);
 
   useEffect(() => {
     if (isListRoute) {
@@ -677,7 +684,7 @@ export default function PropertyRecordsPage() {
         title={
           confirmState.action === 'update'
             ? 'Update Property Record'
-          : confirmState.action === 'delete'
+            : confirmState.action === 'delete'
               ? 'Delete Property Record'
               : 'Save Property Record'
         }
@@ -742,7 +749,7 @@ export default function PropertyRecordsPage() {
         )}
 
         {panelMode === 'form' && (
-          <div className="property-records-form-content">
+          <div className={`property-records-form-content bill-fields-region${fieldsAnimating ? ' bill-fields-animating' : ''}`}>
             <form id="property-record-form" className="form-grid" onSubmit={handleSave} autoComplete="off">
               {FIELDS.map(([name, label]) => {
                 if (name === 'classification') {
@@ -845,7 +852,7 @@ export default function PropertyRecordsPage() {
         )}
 
         {panelMode === 'table' && !isLoading && !isError && filtered.length > 0 && (
-          <div className="property-records-content">
+          <div className={`property-records-content bill-fields-region${fieldsAnimating ? ' bill-fields-animating' : ''}`}>
             <div className="table-wrap property-records-table-wrap">
               <table>
                 <thead>

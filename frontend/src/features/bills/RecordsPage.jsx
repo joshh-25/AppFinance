@@ -209,6 +209,7 @@ export default function RecordsPage() {
   const [exporting, setExporting] = useState(false);
   const [selectedRowKey, setSelectedRowKey] = useState('');
   const [selectedRowData, setSelectedRowData] = useState(null);
+  const [fieldsAnimating, setFieldsAnimating] = useState(false);
   const { toasts, showToast, removeToast } = useToast();
   const billView = searchParams.get('bill') || 'all';
   const config = BILL_CONFIG[billView] || BILL_CONFIG.all;
@@ -270,6 +271,12 @@ export default function RecordsPage() {
       setSelectedRowData(null);
     }
   }, [filteredRows, selectedRowKey]);
+
+  useEffect(() => {
+    setFieldsAnimating(true);
+    const timer = window.setTimeout(() => setFieldsAnimating(false), 220);
+    return () => window.clearTimeout(timer);
+  }, [billView]);
 
   function handleSearchChange(event) {
     setSearch(event.target.value);
@@ -510,7 +517,7 @@ export default function RecordsPage() {
         )}
 
         {!isLoading && !isError && totalRows > 0 && (
-          <div className="records-content">
+          <div className={`records-content bill-fields-region${fieldsAnimating ? ' bill-fields-animating' : ''}`}>
             <div className="table-wrap records-table-wrap">
               <table>
                 <thead>

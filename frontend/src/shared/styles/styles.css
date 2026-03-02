@@ -474,16 +474,16 @@ a {
   flex: 1 1 auto;
   min-height: 0;
   height: auto;
-  margin-bottom: 77px;
-  /* Align with top border of sidebar Log Out section */
+  margin-bottom: 24px;
+  /* Align with bottom of sidebar Log Out section */
 }
 
 .shell-content-lock-scroll .route-transition-content>.card {
   flex: 1 1 0%;
   height: 100%;
   min-height: 0;
-  margin-bottom: 77px;
-  /* Align with top border of sidebar Log Out section */
+  margin-bottom: 24px;
+  /* Align with bottom of sidebar Log Out section */
 }
 
 @media (max-width: 980px) {

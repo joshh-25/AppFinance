@@ -834,12 +834,27 @@ Goal: Implement critical stability mechanisms from the Suggestions document that
 
 ---
 
-## Task 27 — Bill Form Card Height Limit
+## Task 27 — Bill Form Card Height Limit (Refined)
 
-**Problem:** The white "Bills Form" card acts like a container that stretches all the way to the absolute bottom of the screen. This makes it look too tall, going way past the "LOG OUT" button in the sidebar.
+**Problem:** The previous fix (aligning with the top of "LOG OUT") made the card stop too early.
 
-**Goal:** Combine the card's bottom edge with the top border of the "LOG OUT" section so the design looks horizontally aligned and balanced.
+**Goal:** Extend the card downward so its bottom edge aligns with the **bottom** of the "LOG OUT" text in the sidebar.
 
 **Implementation:**
-- [ ] In `styles.css` (around line 473), add `margin-bottom: 77px` to `.shell-content-lock-scroll .bill-form-card`. This pushes the bottom of the card up by exactly the height of the user/logout section.
-- [ ] Ensure mobile view (`@media (max-width: 980px)`) resets this margin to `0` so phones don't lose that space (since the sidebar is hidden on phones).
+- [x] In `styles.css` (around line 473), reduce `margin-bottom` from `77px` to `24px`.
+
+---
+
+## Task 28 — Persistent Layout for Records & Property Records
+
+**Problem:** Navigation within "Records" and "Property Records" causes the entire white card to re-render.
+
+**Goal:** Keep the outer card container (background and borders) completely frozen while only the inner data/table content updates smoothly. Approved by user.
+
+**Implementation:**
+- [x] In `AppLayout.jsx`, update the `transitionKey` logic:
+    - If path starts with `/records`, use `"records-module"`.
+    - If path starts with `/property-records`, use `"property-records-module"`.
+- [x] In `RecordsPage.jsx`, implement a `fieldsAnimating` state.
+- [x] In `PropertyRecordsPage.jsx`, implement a `fieldsAnimating` state.
+- [x] Wrap the inner content of these pages in `<div className="bill-fields-region">`.

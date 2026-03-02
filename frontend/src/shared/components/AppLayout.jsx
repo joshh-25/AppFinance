@@ -204,8 +204,16 @@ export default function AppLayout({
           </div>
         </header>
 
-        {/* Stable key for bill tabs ensures the outer form container stays permanently mounted */}
-        <div key={location.pathname.startsWith('/bills/') ? 'bills-module' : `${location.pathname}${location.search}`} className="route-transition-layer">
+        {/* Stable keys for modules ensures the outer card container stays permanently mounted during sub-navigation */}
+        <div
+          key={
+            location.pathname.startsWith('/bills/') ? 'bills-module' :
+              location.pathname.startsWith('/records') ? 'records-module' :
+                location.pathname.startsWith('/property-records') ? 'property-records-module' :
+                  `${location.pathname}${location.search}`
+          }
+          className="route-transition-layer"
+        >
           <div
             className="route-transition-content"
             style={isLockScrollLayout && lockContentHeight !== null ? { height: `${lockContentHeight}px` } : undefined}
