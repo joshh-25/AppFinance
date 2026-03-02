@@ -790,8 +790,9 @@ Goal: Implement critical stability mechanisms from the Suggestions document that
 - [x] Add test to `BillingFlow.integration.test.jsx`: edit Feb record (id 302), assert Jan (id 301) untouched
 - [x] Run `npm.cmd run test -- --run` — 11 tests pass ✅
 
-### Task 23 — Update `Features.md` Docs (+1 pt)
-- [ ] Replace old Vanilla JS / Tailwind references with React + Vite stack description
+## Task 23 — Update `Features.md` Docs (+1 pt)
+- [x] Replace old references with complete current stack: React 18, Vite 5, PHP 8.2, PHPUnit 11
+- [x] Added API action table, module structure, test count summary, architecture decisions ✅
 
 ### Task 24 — iOS Safari On-Device QA (+1 pt)
 - [ ] Manually test login, bill entry, upload, and Records sync on iPhone/iPad Safari
