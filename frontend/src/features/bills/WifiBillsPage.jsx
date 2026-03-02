@@ -1,1 +1,2 @@
-export { default } from '../../pages/WifiBillsPage.jsx';
+import PaymentFormPage from './PaymentFormPage.jsx';
+export default function WifiBillsPage() { return <PaymentFormPage billMode="wifi" />; }

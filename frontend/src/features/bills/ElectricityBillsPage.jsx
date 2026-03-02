@@ -1,1 +1,2 @@
-export { default } from '../../pages/ElectricityBillsPage.jsx';
+import PaymentFormPage from './PaymentFormPage.jsx';
+export default function ElectricityBillsPage() { return <PaymentFormPage billMode="electricity" />; }

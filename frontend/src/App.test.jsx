@@ -6,37 +6,37 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('./lib/auth.js', () => ({
+vi.mock('./shared/lib/auth.js', () => ({
   checkSession: vi.fn()
 }));
 
-vi.mock('./pages/LoginPage.jsx', () => ({
+vi.mock('./features/auth/LoginPage.jsx', () => ({
   default: () => <div>LoginPage</div>
 }));
-vi.mock('./pages/DashboardPage.jsx', () => ({
+vi.mock('./features/dashboard/DashboardPage.jsx', () => ({
   default: () => <div>DashboardPage</div>
 }));
-vi.mock('./pages/WaterBillsPage.jsx', () => ({
+vi.mock('./features/bills/WaterBillsPage.jsx', () => ({
   default: () => <div>WaterBillsPage</div>
 }));
-vi.mock('./pages/ElectricityBillsPage.jsx', () => ({
+vi.mock('./features/bills/ElectricityBillsPage.jsx', () => ({
   default: () => <div>ElectricityBillsPage</div>
 }));
-vi.mock('./pages/WifiBillsPage.jsx', () => ({
+vi.mock('./features/bills/WifiBillsPage.jsx', () => ({
   default: () => <div>WifiBillsPage</div>
 }));
-vi.mock('./pages/AssociationBillsPage.jsx', () => ({
+vi.mock('./features/bills/AssociationBillsPage.jsx', () => ({
   default: () => <div>AssociationBillsPage</div>
 }));
-vi.mock('./pages/PropertyRecordsPage.jsx', () => ({
+vi.mock('./features/property/PropertyRecordsPage.jsx', () => ({
   default: () => <div>PropertyRecordsPage</div>
 }));
-vi.mock('./pages/RecordsPage.jsx', () => ({
+vi.mock('./features/bills/RecordsPage.jsx', () => ({
   default: () => <div>RecordsPage</div>
 }));
 
-import App from './App.jsx';
-import { checkSession } from './lib/auth.js';
+import App from './app/App.jsx';
+import { checkSession } from './shared/lib/auth.js';
 
 function renderApp(initialPath) {
   const queryClient = new QueryClient({
