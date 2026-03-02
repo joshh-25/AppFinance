@@ -856,3 +856,16 @@ Goal: Implement critical stability mechanisms from the Suggestions document that
 - [x] In `AppLayout.jsx`, update the `transitionKey` logic and add a `no-module-transition` class for stable modules (Bills, Records, Property Records).
 - [x] In `styles.css`, add CSS to disable global animations when the `no-module-transition` class is present.
 - [x] Ensure internal animations in `RecordsPage.jsx` and `PropertyRecordsPage.jsx` are correctly scoped to the inner content.
+
+---
+
+## Task 29 — Dynamic Header Title for Bills Module
+
+**Problem:** The header title says "Bills" for all bill types (WiFi, Water, etc.), which is confusing for the user. It should update to match the active tab.
+
+**Goal:** Update the page title to "WiFi Bills", "Water Bills", "Electricity Bills", or "Association Bills" dynamically as the user switches tabs.
+
+**Implementation:**
+- [x] In `PaymentFormPage.jsx`, create a label mapping for `billMode`.
+- [x] Pass the mapped label as the `title` prop to `AppLayout`.
+- [x] Ensure the update is seamless and does not trigger any card remounts.

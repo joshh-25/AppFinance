@@ -1924,9 +1924,16 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
     setTablePage(1);
   }
 
+  const BILL_TITLES = {
+    wifi: 'WiFi Bills',
+    water: 'Water Bills',
+    electricity: 'Electricity Bills',
+    association: 'Association Bills'
+  };
+
   return (
     <AppLayout
-      title="Bills"
+      title={BILL_TITLES[billMode] || 'Bills'}
       subtitle="Create and update utility bill records by module."
       contentClassName="shell-content-lock-scroll"
     >
