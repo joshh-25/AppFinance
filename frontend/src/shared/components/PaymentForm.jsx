@@ -138,6 +138,7 @@ export default function PaymentForm({
           )}
         </div>
       </div>
+
       {panelMode === 'form' && (
         <div className={`payment-form-content bill-fields-region${fieldsAnimating ? ' bill-fields-animating' : ''}`}>
           <form id="payment-form" className="form-grid" onSubmit={onSubmit} autoComplete="off">

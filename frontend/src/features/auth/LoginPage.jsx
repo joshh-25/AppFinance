@@ -2,12 +2,13 @@
 // Purpose: Login page component.
 
 import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { checkSession } from '../../shared/lib/auth.js';
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -16,7 +17,7 @@ export default function LoginPage() {
   const [formError, setFormError] = useState('');
 
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['session-check'],
+    queryKey: ['session'],
     queryFn: checkSession,
     retry: false
   });
@@ -49,6 +50,12 @@ export default function LoginPage() {
         setFormError('Incorrect username or password. Please try again.');
         return;
       }
+
+      // Keep auth state synchronized with route guard to avoid stale redirects to /login.
+      queryClient.setQueryData(['session'], {
+        authenticated: true,
+        username: String(result?.username || username || '').trim()
+      });
 
       const session = await refetch();
       if (session.data?.authenticated === true) {

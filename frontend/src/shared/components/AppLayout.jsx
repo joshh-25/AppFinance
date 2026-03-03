@@ -116,6 +116,12 @@ export default function AppLayout({
       : 'shell-nav-link';
   }
 
+  function billReviewLinkClass() {
+    return location.pathname === '/bills/review'
+      ? 'shell-nav-link active'
+      : 'shell-nav-link';
+  }
+
   async function handleNavigation(event, to) {
     if (!onNavigateAttempt) {
       setIsSidebarOpen(false);
@@ -195,6 +201,13 @@ export default function AppLayout({
             onClick={(event) => handleNavigation(event, '/bills/association')}
           >
             Association Bills
+          </Link>
+          <Link
+            to="/bills/review"
+            className={billReviewLinkClass()}
+            onClick={(event) => handleNavigation(event, '/bills/review')}
+          >
+            Bill Review
           </Link>
         </nav>
         <a href="/Finance/logout.php" className="shell-user">

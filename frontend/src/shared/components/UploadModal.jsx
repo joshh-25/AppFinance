@@ -29,6 +29,7 @@ export default function UploadModal({ open, uploading, onClose, onUpload }) {
               <input
                 type="file"
                 accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,image/*,application/pdf"
+                multiple
                 onChange={onUpload}
                 disabled={uploading}
               />
@@ -45,7 +46,7 @@ export default function UploadModal({ open, uploading, onClose, onUpload }) {
           </p>
         </div>
 
-        {uploading && <p className="muted-text">Uploading and scanning bill...</p>}
+        {uploading && <p className="muted-text">Uploading and scanning selected file(s)...</p>}
       </div>
     </div>
   );

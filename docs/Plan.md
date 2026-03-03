@@ -894,3 +894,89 @@ Goal: Implement critical stability mechanisms from the Suggestions document that
 ### Task 33 — Backend Refactoring (Legacy PHP)
 - Refactor `LegacyBills.php` (~874 lines) and `LegacyBootstrap.php` into modern, single-responsibility Controller and Service classes.
 - Extract generic database query wrappers to reduce duplication.
+
+---
+
+## Phase 5: Batch Bill Scan Review + Modularization (Pending Approval)
+
+**Goal:** support multi-file bill upload with review/edit before save, while continuing frontend/backend modularization with safe incremental changes.
+
+### Task 34 — Multi-File Upload + Review Tab (All Bill Modules)
+- Add multi-file support in upload UI and handler (process all selected files).
+- Auto-scan each file and collect parsed outputs into a module-specific in-page Review tab.
+- Keep existing `/bills/{module}/list` saved-records route unchanged.
+- In Review tab:
+  - show all scanned rows in a table/list
+  - show scan status per row (scanned / needs review / failed)
+  - allow inline edits for missing/incorrect fields
+  - require property resolution (`property_list_id`) before save
+  - save finalized rows with per-row save actions
+- Continue batch processing even if some files fail; show per-file error messages.
+
+### Task 35 — Bills Frontend Component Decomposition
+- Split `PaymentFormPage.jsx` into smaller components/hooks (e.g., form fields, table panel, upload/review panel, state hook).
+- Keep current behavior, routes, and API contracts stable during refactor.
+- Preserve existing keyboard/save/edit flows and Records-driven edit context.
+
+### Task 36 — Stylesheet Decomposition
+- Split monolithic `styles.css` into feature-scoped stylesheets/modules (Bills, Dashboard, Records, Auth/Layout).
+- Avoid visual regressions; preserve existing theme and responsive behavior.
+
+### Task 37 — Backend Bills Strangler Refactor
+- Migrate logic from `LegacyBills.php` action-by-action into isolated controller/service/repository/upload classes.
+- Keep `action` API contract stable (`list`, `add`, `bill_update`, `upload_bill`, `list_merged`).
+- Add/extend tests around upload parsing/failure paths and bill create/update flows after each migrated action.
+
+### Task 39 — Dedicated Sidebar Bill Review Queue
+- Add independent sidebar entry `Bill Review` and route `/bills/review`.
+- Support uploading mixed bill files from one review queue page.
+- Show all scanned rows in one list with `bill_type`, status, and editable fields.
+- Enable row-level `Edit`, `Save Row`, `Remove`, plus `Save Selected` batch action.
+- Persist review queue locally in browser storage to survive navigation/reload.
+- Remove in-module Bills Review tab/functionality from individual bill pages to avoid duplicate review flows.
+
+**Execution Status:** [x] Completed (2026-03-03)
+
+### Task 38 — Sample Bill Detection Validation Matrix (Approved)
+- Validate parser coverage using local sample files in `ExcelExample/` and `docs/samples/`.
+- For each sample, capture field-level detection results:
+  - detected correctly
+  - detected but normalized/adjusted
+  - missing/not detected
+- Output a module-wise matrix for core fields:
+  - water: `water_account_no`, `water_amount`, `water_due_date`, `water_payment_status`
+  - internet: `internet_account_no`, `wifi_amount`, `wifi_due_date`, `wifi_payment_status`
+  - electricity: `electricity_account_no`, `electricity_amount`, `electricity_due_date`, `electricity_payment_status`
+  - association: `association_dues`, `association_due_date`, `association_payment_status`
+- Record required parser rule updates (label aliases/regex additions) per missed field.
+- Update plan status with completion notes after validation run.
+
+**Execution Status:** [x] Completed (2026-03-03)
+
+**Artifacts:**
+- `docs/samples/parser_validation_input.json`
+- `docs/samples/parser_validation_report.json`
+- `docs/samples/parser_validation_report.md`
+
+**Summary Findings:**
+- 5/5 sample files had correct bill-type detection and passed required-field validation.
+- Strong coverage:
+  - water sample: all core target fields detected
+  - wifi sample: all core target fields detected
+  - one electricity sample (`MANABE...pdf`): all core target fields detected
+- Gaps observed:
+  - electricity sample `8183_SW-9E...pdf`: missing `electricity_account_no` and `electricity_due_date`
+  - electricity sample `docs/samples/electricity-bill-sample.pdf`: missing `electricity_due_date`
+- Follow-up parser improvements needed:
+  - extend due-date pattern variants for electricity templates
+  - add account-number label aliases for utility invoices that do not use current account keywords
+
+**Parser Patch Update (2026-03-03, same task):**
+- [x] Expanded electricity due-date pattern coverage (`YYYY-MM-DD`, `Month DD, YYYY`, and non-colon due-date formats).
+- [x] Improved bill-type detection strategy to reduce cross-module misrouting in mixed-format OCR results.
+- [x] Tightened internet-provider extraction to avoid overly generic `Provider:` captures.
+- Validation rerun result:
+  - water sample: correct module + full target field detection
+  - wifi sample: correct module + full target field detection
+  - electricity samples: correct module + full target field detection for 2/2
+  - association invoice sample (`8183_SW-9E...pdf`): correct module, but `association_due_date` still missing

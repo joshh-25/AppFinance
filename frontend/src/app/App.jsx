@@ -7,6 +7,7 @@ import { useLocation } from 'react-router-dom';
 import LoginPage from '../features/auth/LoginPage.jsx';
 import DashboardPage from '../features/dashboard/DashboardPage.jsx';
 import PaymentFormPage from '../features/bills/PaymentFormPage.jsx';
+import BillReviewPage from '../features/bills/BillReviewPage.jsx';
 import PropertyRecordsPage from '../features/property/PropertyRecordsPage.jsx';
 import RecordsPage from '../features/bills/RecordsPage.jsx';
 import { checkSession } from '../shared/lib/auth.js';
@@ -14,13 +15,13 @@ import ErrorBoundary from '../shared/components/ErrorBoundary.jsx';
 
 function ProtectedRoute({ children }) {
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['session-guard'],
+    queryKey: ['session'],
     queryFn: checkSession,
     retry: false,
     staleTime: 15000,
     gcTime: 60000,
-    refetchOnMount: false,
-    refetchOnReconnect: false
+    refetchOnMount: true,
+    refetchOnReconnect: true
   });
 
   if (isLoading) {
@@ -54,6 +55,14 @@ function AppRoutes() {
       />
 
       {/* Single persistent bill route — no re-mount when switching tabs */}
+      <Route
+        path="/bills/review"
+        element={
+          <ProtectedRoute>
+            <BillReviewPage />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/bills/:billType"
         element={

@@ -1,0 +1,82 @@
+[
+  {
+    "sample": "8183_SW-9E FEBRUARY 2026 BILLING INVOICE.pdf",
+    "normalized_bill_type": "association_dues",
+    "detected_bill_type": "association_dues",
+    "target_fields_detected": [
+      "association_dues",
+      "association_payment_status"
+    ],
+    "target_fields_missing": [
+      "association_due_date"
+    ],
+    "validation": {
+      "valid": true,
+      "message": ""
+    }
+  },
+  {
+    "sample": "MANABE43090802-202601MANABE43090802_gYWb.pdf",
+    "normalized_bill_type": "",
+    "detected_bill_type": "electricity",
+    "target_fields_detected": [
+      "electricity_account_no",
+      "electricity_amount",
+      "electricity_due_date",
+      "electricity_payment_status"
+    ],
+    "target_fields_missing": [],
+    "validation": {
+      "valid": true,
+      "message": ""
+    }
+  },
+  {
+    "sample": "electricity-bill-sample.pdf",
+    "normalized_bill_type": "electricity",
+    "detected_bill_type": "electricity",
+    "target_fields_detected": [
+      "electricity_account_no",
+      "electricity_amount",
+      "electricity_due_date",
+      "electricity_payment_status"
+    ],
+    "target_fields_missing": [],
+    "validation": {
+      "valid": true,
+      "message": ""
+    }
+  },
+  {
+    "sample": "water-bill-sample.pdf",
+    "normalized_bill_type": "water",
+    "detected_bill_type": "water",
+    "target_fields_detected": [
+      "water_account_no",
+      "water_amount",
+      "water_due_date",
+      "water_payment_status"
+    ],
+    "target_fields_missing": [],
+    "validation": {
+      "valid": true,
+      "message": ""
+    }
+  },
+  {
+    "sample": "wifi-bill-sample.pdf",
+    "normalized_bill_type": "internet",
+    "detected_bill_type": "internet",
+    "target_fields_detected": [
+      "internet_account_no",
+      "wifi_amount",
+      "wifi_due_date",
+      "wifi_payment_status"
+    ],
+    "target_fields_missing": [],
+    "validation": {
+      "valid": true,
+      "message": ""
+    }
+  }
+]
