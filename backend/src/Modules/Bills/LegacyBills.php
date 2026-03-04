@@ -66,6 +66,11 @@ function normalize_bill_type_filter($value)
     return in_array($normalized, API_BILL_TYPES, true) ? $normalized : '';
 }
 
+function is_valid_bill_json_payload($data)
+{
+    return is_array($data);
+}
+
 function escape_like_pattern($value)
 {
     return strtr((string) $value, [
@@ -276,7 +281,7 @@ function handle_bill_actions($action)
         $input = file_get_contents('php://input');
         $data = json_decode($input, true);
 
-        if (!$data) {
+        if (!is_valid_bill_json_payload($data)) {
             echo json_encode(['success' => false, 'message' => 'Invalid JSON input']);
             return true;
         }
@@ -404,7 +409,7 @@ function handle_bill_actions($action)
         $input = file_get_contents('php://input');
         $data = json_decode($input, true);
 
-        if (!is_array($data)) {
+        if (!is_valid_bill_json_payload($data)) {
             echo json_encode(['success' => false, 'message' => 'Invalid JSON input']);
             return true;
         }
@@ -548,12 +553,23 @@ function handle_bill_actions($action)
         $isHeicFamily = in_array($extension, ['heic', 'heif'], true);
 
         // Some iOS uploads can arrive as application/octet-stream even when extension/type is HEIC/HEIF.
-        if (!$isMimeAllowed && $isHeicFamily && in_array($browserMime, ['image/heic', 'image/heif'], true)) {
+        if (
+            !$isMimeAllowed
+            && $isHeicFamily
+            && in_array($browserMime, ['image/heic', 'image/heif'], true)
+            && in_array($detectedMime, ['', 'application/octet-stream'], true)
+        ) {
             $effectiveMime = $browserMime;
             $isMimeAllowed = true;
         }
-        // Some mobile browsers send octet-stream for camera captures. Accept if extension is known and safe.
-        if (!$isMimeAllowed && $hasKnownExtension && in_array($browserMime, ['application/octet-stream', 'binary/octet-stream'], true)) {
+        // Some mobile browsers send octet-stream for camera captures.
+        // Only trust extension fallback when server-side MIME detection is unknown.
+        if (
+            !$isMimeAllowed
+            && $hasKnownExtension
+            && in_array($browserMime, ['application/octet-stream', 'binary/octet-stream'], true)
+            && in_array($detectedMime, ['', 'application/octet-stream'], true)
+        ) {
             $effectiveMime = $allowedExtensionMap[$extension];
             $isMimeAllowed = true;
         }
@@ -648,17 +664,47 @@ function handle_bill_actions($action)
 
         if ($http_status < 200 || $http_status >= 300) {
             error_log('Finance API n8n upload non-2xx: status=' . $http_status . ' body=' . $response);
+            $responseDetail = '';
+            $decodedError = json_decode((string) $response, true);
+            if (is_array($decodedError)) {
+                $parts = [];
+                if (!empty($decodedError['errorDescription'])) {
+                    $parts[] = trim((string) $decodedError['errorDescription']);
+                }
+                if (!empty($decodedError['errorMessage'])) {
+                    $parts[] = trim((string) $decodedError['errorMessage']);
+                }
+                if (isset($decodedError['errorDetails']['rawErrorMessage'])) {
+                    $raw = $decodedError['errorDetails']['rawErrorMessage'];
+                    if (is_array($raw)) {
+                        $parts[] = trim((string) implode(' | ', $raw));
+                    } elseif (is_string($raw)) {
+                        $parts[] = trim($raw);
+                    }
+                }
+                if (!empty($parts)) {
+                    $responseDetail = implode(' | ', array_filter($parts, static function ($value) {
+                        return $value !== '';
+                    }));
+                }
+            }
+            if ($responseDetail === '') {
+                $responseDetail = substr(trim((string) $response), 0, 280);
+            }
             http_response_code(502);
             echo json_encode([
                 'success' => false,
                 'message' => 'Document processing service returned an error.',
                 'status_code' => $http_status,
+                'details' => $responseDetail,
             ]);
             return true;
         }
 
+        $trimmedResponse = trim((string) $response);
         $n8n_data = json_decode($response, true);
-        if ($n8n_data) {
+        $jsonError = json_last_error();
+        if ($n8n_data !== null || $jsonError === JSON_ERROR_NONE) {
             if (isset($n8n_data['json'])) {
                 $n8n_data = $n8n_data['json'];
             }
@@ -704,7 +750,18 @@ function handle_bill_actions($action)
             return true;
         }
 
-        echo json_encode(['success' => true, 'data' => ['raw_response' => $response]]);
+        // Treat empty or HTML 200 responses as upstream errors instead of successful scans.
+        if ($trimmedResponse === '' || preg_match('/^\s*(?:<!doctype\s+html|<html\b)/i', $trimmedResponse)) {
+            error_log('Finance API n8n upload invalid JSON response: ' . substr($trimmedResponse, 0, 280));
+            http_response_code(502);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Document processing service returned an invalid response format.',
+            ]);
+            return true;
+        }
+
+        echo json_encode(['success' => true, 'data' => ['raw_response' => $trimmedResponse]]);
         return true;
     }
 

@@ -32,7 +32,13 @@ vi.mock('./features/property/PropertyRecordsPage.jsx', () => ({
   default: () => <div>PropertyRecordsPage</div>
 }));
 vi.mock('./features/bills/RecordsPage.jsx', () => ({
-  default: () => <div>RecordsPage</div>
+  default: () => <div>BillsRecordsPage</div>
+}));
+vi.mock('./features/records/RecordsLandingPage.jsx', () => ({
+  default: () => <div>RecordsLandingPage</div>
+}));
+vi.mock('./features/records/ExpensesRecordsPage.jsx', () => ({
+  default: () => <div>ExpensesRecordsPage</div>
 }));
 
 import App from './app/App.jsx';
@@ -75,7 +81,7 @@ describe('App routing guard', () => {
     renderApp('/records');
 
     await waitFor(() => {
-      expect(screen.getByText('RecordsPage')).toBeInTheDocument();
+      expect(screen.getByText('RecordsLandingPage')).toBeInTheDocument();
     });
   });
 

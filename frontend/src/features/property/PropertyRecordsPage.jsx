@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
 import AppLayout from '../../shared/components/AppLayout.jsx';
+import BillingsFlowTabs from '../../shared/components/BillingsFlowTabs.jsx';
 import ConfirmDialog from '../../shared/components/ConfirmDialog.jsx';
 import Toast from '../../shared/components/Toast.jsx';
 import { useToast } from '../../shared/hooks/useToast.js';
@@ -20,6 +21,7 @@ import {
   getScopedGlobalEditMode,
   setScopedGlobalEditMode
 } from '../../shared/lib/globalEditMode.js';
+import { getBillingsFlowNextPath } from '../../shared/lib/billingsFlow.js';
 
 const ROWS_PER_PAGE = 10;
 const PROPERTY_RECORD_DRAFT_KEY = 'finance:property-record-draft';
@@ -63,7 +65,12 @@ const FIELDS = [
   ['penalty', 'Penalty Amount']
 ];
 const CLASSIFICATION_OPTIONS = ['Fixed', 'Partnership'];
-const BILL_FLOW_ROUTES = ['/bills/wifi', '/bills/water', '/bills/electricity', '/bills/association'];
+const BILL_ROUTE_TO_TYPE = {
+  '/bills/wifi': 'internet',
+  '/bills/water': 'water',
+  '/bills/electricity': 'electricity',
+  '/bills/association': 'association_dues'
+};
 const UNSAVED_MESSAGE = 'You have unsaved changes. Save before leaving this page?';
 
 function isBillsOrPropertyRoute(path) {
@@ -563,7 +570,17 @@ export default function PropertyRecordsPage() {
     window.sessionStorage.setItem(SELECTED_PROPERTY_CONTEXT_KEY, JSON.stringify(mapToPropertyForm(form)));
   }
 
-  function handleNextBillSection() {
+  function handleBillingsStepNavigation(targetPath) {
+    if (!targetPath) {
+      return;
+    }
+
+    if (targetPath === '/property-records') {
+      navigate('/property-records');
+      return;
+    }
+
+    const targetBillType = BILL_ROUTE_TO_TYPE[targetPath] || 'internet';
     const snapshot = getScopedGlobalEditMode('bills');
     const isRecordsMode = snapshot.active === true && snapshot.context?.source === 'records';
 
@@ -585,7 +602,7 @@ export default function PropertyRecordsPage() {
         real_property_tax: form.real_property_tax || '',
         rpt_payment_status: form.rpt_payment_status || '',
         penalty: form.penalty || '',
-        bill_type: String(baseContext.bill_type || 'internet'),
+        bill_type: String(baseContext.bill_type || targetBillType),
         editing_bill_id: scopedId,
         water_bill_id: scopedId,
         electricity_bill_id: scopedId,
@@ -595,10 +612,10 @@ export default function PropertyRecordsPage() {
       window.sessionStorage.setItem(RECORDS_EDIT_CONTEXT_KEY, JSON.stringify(recordsEditPayload));
       setScopedGlobalEditMode('bills', {
         source: 'records',
-        bill_type: 'internet'
+        bill_type: targetBillType
       });
       persistBillNavigationContext();
-      navigate(BILL_FLOW_ROUTES[0], {
+      navigate(targetPath, {
         state: { fromPropertyRecordsNext: true }
       });
       return;
@@ -608,9 +625,14 @@ export default function PropertyRecordsPage() {
     window.sessionStorage.removeItem(RECORDS_EDIT_CONTEXT_KEY);
     clearScopedGlobalEditMode('bills');
     persistBillNavigationContext();
-    navigate(BILL_FLOW_ROUTES[0], {
+    navigate(targetPath, {
       state: { fromPropertyRecordsNext: true }
     });
+  }
+
+  function handleNextBillSection() {
+    const nextPath = getBillingsFlowNextPath('/property-records') || '/bills/wifi';
+    handleBillingsStepNavigation(nextPath);
   }
 
   function handleEdit(row) {
@@ -735,6 +757,7 @@ export default function PropertyRecordsPage() {
         onConfirm={unsavedGuard.leaveWithoutSaving}
         busy={unsavedGuard.isPromptBusy}
       />
+      <BillingsFlowTabs currentPath={location.pathname} onNavigate={handleBillingsStepNavigation} />
       <section
         className={`card bill-form-card ${panelMode === 'table' ? 'property-records-card' : 'property-records-form-card'}`}
       >

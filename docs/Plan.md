@@ -980,3 +980,237 @@ Goal: Implement critical stability mechanisms from the Suggestions document that
   - wifi sample: correct module + full target field detection
   - electricity samples: correct module + full target field detection for 2/2
   - association invoice sample (`8183_SW-9E...pdf`): correct module, but `association_due_date` still missing
+
+---
+
+## Active Approved Roadmap (Phase-Gated Delivery)
+### Project Goal (Simple, Non-Programmer Friendly)
+We will improve the app navigation and add a new **Expenses** module.
+Existing billing behavior will stay working the same.
+Work will be done in small phases, and we will pause for your approval after every phase.
+
+### Approval Rules (Strict)
+- Phase 1 is documentation only in this file (`docs/Plan.md`).
+- No app code changes are allowed before your approval.
+- After each implementation phase, stop and wait for your approval before the next phase.
+
+### New Features Planned
+- New sidebar structure:
+  - Dashboard
+  - Records
+  - Billings
+  - Bills Review
+  - Expenses
+- New frontend routes:
+  - `/billings`
+  - `/records`
+  - `/records/bills`
+  - `/records/expenses`
+  - `/expenses`
+- New backend actions for Expenses:
+  - `expense_list`
+  - `expense_create`
+  - `expense_update`
+  - `expense_delete`
+- New database table:
+  - `expenses`
+
+### Important Safety Constraints
+- Do not change existing billing/property endpoint behavior.
+- Do not change existing billing calculations.
+- Do not change Bills Review logic.
+- Add new Expenses logic as separate module.
+
+### Phase Status Tracker
+- [x] Phase 1: Plan document update (this section) completed.
+- [x] Phase 2: Sidebar + route structure refactor.
+- [x] Phase 3: Billings module tabs + step flow.
+- [x] Phase 4: Records module split (Bills Records / Expenses Records).
+- [x] Phase 5: Expenses backend (table + API + RBAC + CSRF).
+- [x] Phase 6: Expenses form + expenses records UI.
+- [x] Phase 7: Expenses OCR (client-side, images + PDF).
+- [x] Phase 8: Regression testing + final polish.
+
+### Phase Details
+#### Phase 1 - Plan Document Update (No App Code)
+What users will notice:
+- No UI change yet.
+- Roadmap is documented clearly for review and approval.
+
+Technical checklist:
+- [x] Add plain-language roadmap.
+- [x] Add phase-by-phase implementation sequence.
+- [x] Add approval gates after every phase.
+
+Stop point:
+- Wait for user approval before Phase 2.
+
+#### Phase 2 - Sidebar + Route Structure Refactor
+What users will notice:
+- Sidebar modules become: Dashboard, Records, Billings, Bills Review, Expenses.
+- Four separate bill buttons are removed from sidebar.
+
+Technical checklist:
+- [x] Update `AppLayout` navigation links.
+- [x] Add/adjust routes in `frontend/src/app/App.jsx`.
+- [x] Keep existing bill routes (`/bills/*`) working.
+- [x] Keep `/bills/review` behavior unchanged.
+
+Stop point:
+- Wait for user approval before Phase 3.
+
+#### Phase 3 - Billings Module Tabs + Step Flow
+What users will notice:
+- Clicking **Billings** opens a guided flow in this order:
+  1. Property Records
+  2. Wifi Bills
+  3. Water Bills
+  4. Electricity Bills
+  5. Association Bills
+- Users can click tabs directly and still use Next/Back.
+
+Technical checklist:
+- [x] Add shared Billings tab/step navigation component.
+- [x] Integrate with Property Records and Bills pages.
+- [x] Keep unsaved data when switching tabs.
+- [x] Keep existing save/update logic unchanged.
+
+Stop point:
+- Wait for user approval before Phase 4.
+
+#### Phase 4 - Records Module Split
+What users will notice:
+- Clicking **Records** first shows two buttons:
+  - Bills Records
+  - Expenses Records
+
+Technical checklist:
+- [x] Add records landing page.
+- [x] Move existing records table to `/records/bills`.
+- [x] Add `/records/expenses` view shell.
+
+Stop point:
+- Wait for user approval before Phase 5.
+
+#### Phase 5 - Expenses Backend
+What users will notice:
+- Expenses data can be saved to database.
+
+Technical checklist:
+- [x] Add `expenses` SQL migration.
+- [x] Add backend Expenses module/controller.
+- [x] Add API actions: list/create/update/delete.
+- [x] Add RBAC mapping and CSRF write protection.
+
+Stop point:
+- Wait for user approval before Phase 6.
+
+#### Phase 6 - Expenses Form + Expenses Records UI
+What users will notice:
+- New **Expenses** page with card form:
+  - Date
+  - Payee
+  - Description (large textarea)
+  - Category
+  - Amount
+  - Remarks
+  - Payment (payment method)
+  - TIN Number
+  - Non-VAT
+  - OCR button
+- New Expenses Records page with search/edit/delete/export.
+
+Technical checklist:
+- [x] Build Expenses form page and API integration.
+- [x] Build Expenses records table page.
+- [x] Keep light/dark theme consistency.
+- [x] Add CSV export for expenses records.
+
+Stop point:
+- Wait for user approval before Phase 7.
+
+#### Phase 7 - OCR for Expenses (Client-Side)
+What users will notice:
+- OCR button can scan receipt images/PDF and auto-fill fields when detected.
+
+Technical checklist:
+- [x] Add client OCR integration.
+- [x] Support images + PDF OCR (first pages).
+- [x] Add field-mapping parser heuristics.
+- [x] Keep full manual edit capability.
+
+Stop point:
+- Wait for user approval before Phase 8.
+
+#### Phase 8 - Regression + Final Polish
+What users will notice:
+- Existing billing flows still work.
+- New expenses flows are stable and documented.
+
+Technical checklist:
+- [x] Run frontend + backend test suites.
+- [x] Verify Bills Review unchanged.
+- [x] Verify existing billing endpoints unchanged.
+- [x] Final documentation updates.
+
+Completion note (March 4, 2026):
+- Expenses backend CRUD endpoints and migration are implemented.
+- Billings module tabs/step flow is implemented and keeps unsaved drafts.
+- Records module is split into Bills Records and Expenses Records.
+- Expenses OCR supports image/PDF upload with auto-fill heuristics.
+
+Final sign-off:
+- User approval required for completion.
+
+---
+
+## Error Remediation Wave (March 4, 2026)
+Goal: fix critical functional issues found during full-system review using approval-based phases.
+
+### Phase Tracker
+- [x] Phase 1: Backend payload validation + unit tests.
+- [x] Phase 2: Records edit-flow safety hardening + frontend test updates.
+- [x] Phase 3: Manual end-to-end QA pass for high-risk flows and remaining UX edge cases.
+
+### Phase 1 - Completed
+- [x] Fixed Expenses validation so empty amount no longer saves as `0.00`.
+- [x] Fixed bill `add`/`bill_update` JSON validation to accept valid empty-object JSON payloads.
+- [x] Added/updated backend tests:
+  - `backend/tests/Unit/ExpensesValidationTest.php`
+  - `backend/tests/Unit/BillsValidationTest.php`
+
+### Phase 2 - Completed
+- [x] Hardened Bills Records edit flow to resolve selected row from current filtered data by row key (prevents stale row-state edits).
+- [x] Added multi-module edit guard path in Records edit handling and kept no-ID protection behavior.
+- [x] Fixed duplicate React table-header keys in Bills Records table (removed repeated-key warnings).
+- [x] Extended frontend integration tests for this edit-protection scenario:
+  - `frontend/src/features/bills/__tests__/BillingFlow.integration.test.jsx`
+
+Validation:
+- [x] `php vendor/bin/phpunit -c phpunit.xml` (in `backend/`)
+- [x] `npm.cmd run test -- --run` (in `frontend/`)
+- [x] `npm.cmd run build` (in `frontend/`)
+
+Stop point:
+- Final sign-off.
+
+### Phase 3 - Completed
+- [x] Verified route accessibility on local server (`/dashboard`, `/records`, `/records/bills`, `/records/expenses`, `/billings`, `/bills/wifi`, `/bills/review`, `/expenses`) with HTTP 200 responses.
+- [x] Verified authenticated API flow using live session + CSRF token:
+  - [x] login/session (`admin` role)
+  - [x] expenses validation (`Amount is required.`)
+  - [x] expenses create/update/list/delete end-to-end
+  - [x] bills `add` empty-object payload returns business validation message (not JSON syntax error)
+  - [x] `list_merged` returns success
+  - [x] health endpoint reports DB connected
+- [x] Verified CSRF enforcement (`Invalid or missing CSRF token.` on protected write without token).
+- [x] Verified RBAC enforcement with temporary `viewer` user:
+  - [x] `list_merged` allowed
+  - [x] `expense_create` denied (`Forbidden`)
+- [x] Regression checks re-run:
+  - [x] `php vendor/bin/phpunit -c phpunit.xml` (backend)
+  - [x] `npm.cmd run test -- --run` (frontend)
+  - [x] `npm.cmd run build` (frontend)
+
+Residual manual checks (device-only):
+- [ ] Physical-phone UI walkthrough (iOS Safari / Android Chrome) still needed for final mobile UX sign-off.

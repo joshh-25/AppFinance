@@ -130,3 +130,87 @@ List endpoints
 | [Cancel]                      [Log Out]   |
 +-------------------------------------------+
 ```
+
+## 9. OCR Flow (n8n + PaddleOCR) - Step by Step
+1. User opens `Bill Review` from sidebar.
+2. User clicks `Upload Bills` and selects multiple files (mixed types allowed).
+3. Frontend sends each file to `api.php?action=upload_bill`.
+4. Backend validates file type/size and forwards file to n8n webhook.
+5. n8n sends the file to OCR service (PaddleOCR API).
+6. OCR service extracts raw text + key fields and returns structured JSON.
+7. n8n normalizes output to your app schema (`bill_type`, `amount`, `due_date`, `account_no`, etc.) and returns response.
+8. Frontend maps data using `normalizeUploadData()`, auto-detects bill type, and creates queue rows.
+9. Each row gets status:
+   - `ready` (required fields found)
+   - `needs_review` (missing/unclear fields)
+   - `scan_failed` (OCR/API issue)
+10. User reviews rows, edits incorrect fields, assigns Property/DD and Billing Period.
+11. User clicks `Save Row` or `Save Selected`.
+12. Frontend calls `createBill` and backend saves clean rows into `property_billing_records`.
+
+## 10. Bill Review Wireframe (Mixed Upload + Review Queue)
+```text
++----------------------+-------------------------------------------------------------+
+| Sidebar              | Header                                                      |
+| - Dashboard          | Bill Review                          [Upload Bills] [Save] |
+| - Records            +-------------------------------------------------------------+
+| - Property Records   | Queue Summary: Pending: 12  Ready: 8  Needs Review: 3     |
+| - Bills              +-------------------------------------------------------------+
+| - Bill Review        | [ ] | File Name      | Type        | Property/DD | Status  |
+|                      |-------------------------------------------------------------|
+| [username] [Log Out] | [x] | elec_001.pdf   | Electricity | Rose Apt    | ready   |
+|                      | [ ] | water_003.jpg  | Water       | (empty)     | review  |
+|                      | [x] | wifi_022.png   | Internet    | DD-07       | ready   |
+|                      | [ ] | assoc_004.pdf  | Association | DD-03       | failed  |
++----------------------+-------------------------------------------------------------+
+```
+
+## 11. Row Edit Wireframe (Inline Edit in Review)
+```text
++-----------------------------------------------------------------------------------+
+| Edit Row: water_003.jpg                                                           |
++-----------------------------------------------------------------------------------+
+| Bill Type        [Water v]                                                        |
+| Property / DD    [Select property_list ...]                                       |
+| Billing Period   [2026-03]                                                        |
+| Water Account No [________________________]                                       |
+| Water Amount     [________________________]                                       |
+| Due Date         [________________________]                                       |
+| Payment Status   [Unpaid v]                                                       |
+| Scan Error       "Missing Due Date and Account No from OCR."                      |
++-----------------------------------------------------------------------------------+
+| [Cancel]                                                   [Save Row]             |
++-----------------------------------------------------------------------------------+
+```
+
+## 12. OCR Pipeline Wireframe (System View)
+```text
+[User Uploads Files]
+        |
+        v
+[Frontend Bill Review]
+        |
+        v
+[POST api.php?action=upload_bill]
+        |
+        v
+[Backend Validation]
+        |
+        v
+[n8n Webhook Flow]
+        |
+        v
+[PaddleOCR Service]
+        |
+        v
+[Normalized JSON Response]
+        |
+        v
+[Bill Review Queue: ready / needs_review / scan_failed]
+        |
+        v
+[User Edits + Save Selected]
+        |
+        v
+[property_billing_records]
+```

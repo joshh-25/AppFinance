@@ -23,6 +23,14 @@ class ApiRouter
             return;
         }
 
+        if (AccountLookupController::handle($action)) {
+            return;
+        }
+
+        if (ExpensesController::handle($action)) {
+            return;
+        }
+
         echo json_encode(['success' => false, 'message' => 'Invalid action']);
     }
 }

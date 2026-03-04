@@ -8,7 +8,7 @@ import AppLayout from '../../shared/components/AppLayout.jsx';
 import Toast from '../../shared/components/Toast.jsx';
 import { useToast } from '../../shared/hooks/useToast.js';
 import { fetchMergedBills } from '../../shared/lib/api.js';
-import { setGlobalEditMode } from '../../shared/lib/globalEditMode.js';
+import { clearGlobalEditMode, setGlobalEditMode } from '../../shared/lib/globalEditMode.js';
 
 const ROWS_PER_PAGE = 10;
 const SHARED_BILL_SELECTION_KEY = 'finance-bill-selection:shared';
@@ -223,6 +223,75 @@ function getBillRouteByType(billType) {
   return BILL_TYPE_TO_ROUTE[billType] || '/bills/water';
 }
 
+function getBillIdsByType(row = {}) {
+  return {
+    water: Number(row.water_bill_id || 0),
+    electricity: Number(row.electricity_bill_id || 0),
+    internet: Number(row.internet_bill_id || 0),
+    association_dues: Number(row.association_bill_id || 0)
+  };
+}
+
+function getPopulatedBillTypesFromRow(row = {}) {
+  const hasNonEmptyValue = (value) => String(value ?? '').trim() !== '';
+  const populated = [];
+
+  if (
+    hasNonEmptyValue(row.water_account_no) ||
+    hasNonEmptyValue(row.water_amount) ||
+    hasNonEmptyValue(row.water_due_date) ||
+    hasNonEmptyValue(row.water_payment_status)
+  ) {
+    populated.push('water');
+  }
+
+  if (
+    hasNonEmptyValue(row.electricity_account_no) ||
+    hasNonEmptyValue(row.electricity_amount) ||
+    hasNonEmptyValue(row.electricity_due_date) ||
+    hasNonEmptyValue(row.electricity_payment_status)
+  ) {
+    populated.push('electricity');
+  }
+
+  if (
+    hasNonEmptyValue(row.internet_provider) ||
+    hasNonEmptyValue(row.internet_account_no) ||
+    hasNonEmptyValue(row.wifi_amount) ||
+    hasNonEmptyValue(row.wifi_due_date) ||
+    hasNonEmptyValue(row.wifi_payment_status)
+  ) {
+    populated.push('internet');
+  }
+
+  if (
+    hasNonEmptyValue(row.association_dues) ||
+    hasNonEmptyValue(row.association_due_date) ||
+    hasNonEmptyValue(row.association_payment_status)
+  ) {
+    populated.push('association_dues');
+  }
+
+  return populated;
+}
+
+function buildPropertyEditPayloadFromRow(row = {}) {
+  return {
+    property_list_id: Number(row.property_list_id || 0),
+    dd: row.dd || '',
+    property: row.property || '',
+    billing_period: normalizeBillingPeriodValue(row.billing_period),
+    unit_owner: row.unit_owner || '',
+    classification: row.classification || '',
+    deposit: row.deposit || '',
+    rent: row.rent || '',
+    per_property_status: row.per_property_status || '',
+    real_property_tax: row.real_property_tax || '',
+    rpt_payment_status: row.rpt_payment_status || '',
+    penalty: row.penalty || ''
+  };
+}
+
 export default function RecordsPage() {
   useEffect(() => {
     window.sessionStorage.removeItem(SHARED_BILL_SELECTION_KEY);
@@ -343,7 +412,10 @@ export default function RecordsPage() {
   }
 
   function handleEditSelectedRow(rowOverride = null) {
-    const rowToEdit = rowOverride || selectedRowData;
+    const selectedRowFromKey = selectedRowKey
+      ? filteredRows.find((row) => getRowKey(row) === selectedRowKey) || null
+      : null;
+    const rowToEdit = rowOverride || selectedRowFromKey || selectedRowData;
     if (!rowToEdit) {
       showToast('warning', 'Select a row first before editing.');
       return;
@@ -351,16 +423,23 @@ export default function RecordsPage() {
 
     const rowId = Number(rowToEdit.id || 0);
     const billType = resolveBillTypeFromRow(rowToEdit, billView);
-    const waterBillId = Number(rowToEdit.water_bill_id || 0);
-    const electricityBillId = Number(rowToEdit.electricity_bill_id || 0);
-    const internetBillId = Number(rowToEdit.internet_bill_id || 0);
-    const associationBillId = Number(rowToEdit.association_bill_id || 0);
-    const billIdsByType = {
-      water: waterBillId,
-      electricity: electricityBillId,
-      internet: internetBillId,
-      association_dues: associationBillId
-    };
+    const billIdsByType = getBillIdsByType(rowToEdit);
+    const waterBillId = billIdsByType.water;
+    const electricityBillId = billIdsByType.electricity;
+    const internetBillId = billIdsByType.internet;
+    const associationBillId = billIdsByType.association_dues;
+    const editableTypes = Object.keys(billIdsByType).filter((type) => billIdsByType[type] > 0);
+    const populatedTypes = getPopulatedBillTypesFromRow(rowToEdit);
+    const candidateTypes = Array.from(new Set([...editableTypes, ...populatedTypes]));
+
+    if (billView === 'all' && candidateTypes.length > 1) {
+      showToast(
+        'warning',
+        'This row has multiple bill modules. Select Water, Electricity, WiFi, or Association first, then click Edit.'
+      );
+      return;
+    }
+
     const editingBillId =
       (billType === 'water'
         ? waterBillId
@@ -378,7 +457,24 @@ export default function RecordsPage() {
       );
 
       if (!fallbackType) {
-        showToast('warning', 'No editable bill ID exists for the selected row.');
+        if (populatedTypes.length > 0) {
+          showToast('warning', 'No editable bill ID exists for this row. Open the specific module tab and save once.');
+          return;
+        }
+
+        const hasPropertyIdentity =
+          Number(rowToEdit.property_list_id || 0) > 0 ||
+          String(rowToEdit.dd || '').trim() !== '' ||
+          String(rowToEdit.property || '').trim() !== '';
+        if (!hasPropertyIdentity) {
+          showToast('warning', 'No editable bill ID exists for the selected row.');
+          return;
+        }
+
+        const propertyPayload = buildPropertyEditPayloadFromRow(rowToEdit);
+        window.sessionStorage.setItem(RECORDS_EDIT_CONTEXT_KEY, JSON.stringify(propertyPayload));
+        clearGlobalEditMode();
+        navigate('/property-records');
         return;
       }
 
@@ -432,7 +528,7 @@ export default function RecordsPage() {
     window.sessionStorage.setItem(RECORDS_EDIT_CONTEXT_KEY, JSON.stringify(payload));
     setGlobalEditMode({
       source: 'records',
-      bill_type: billType,
+      bill_type: targetType,
       route: targetRoute
     });
     navigate(targetRoute);
@@ -495,7 +591,7 @@ export default function RecordsPage() {
 
   return (
     <AppLayout
-      title="Records"
+      title="Bills Records"
       subtitle="Search, review, and export billing records."
       contentClassName="shell-content-lock-scroll"
     >
@@ -554,8 +650,8 @@ export default function RecordsPage() {
               <table>
                 <thead>
                   <tr>
-                    {tableColumns.map(([, label]) => (
-                      <th key={label}>{label}</th>
+                    {tableColumns.map(([, label], index) => (
+                      <th key={`${label}-${index}`}>{label}</th>
                     ))}
                   </tr>
                 </thead>

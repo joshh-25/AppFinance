@@ -50,11 +50,15 @@ export default function PaymentForm({
   onClearFields,
   saving,
   uploading,
+  prevFlowPath,
   isLastFlowStep,
   nextFlowPath,
+  onNavigatePrev,
   onNavigateNext,
   onNavigateBack,
   onOpenUpload,
+  onOpenAccountLookupUpload,
+  importingAccountLookup,
   nextButtonLabel
 }) {
   return (
@@ -123,6 +127,14 @@ export default function PaymentForm({
           </div>
         </div>
         <div className="card-title-actions">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={onOpenAccountLookupUpload}
+            disabled={saving || uploading || importingAccountLookup}
+          >
+            {importingAccountLookup ? 'Importing Accounts...' : 'Upload Account Files'}
+          </button>
           <button type="button" className="btn btn-secondary" onClick={onOpenUpload} disabled={saving || uploading}>
             Upload Bill
           </button>
@@ -245,6 +257,11 @@ export default function PaymentForm({
 
       {panelMode === 'form' && (
         <div className="payment-corner-actions">
+          {prevFlowPath && (
+            <button type="button" className="btn btn-secondary" onClick={onNavigatePrev} disabled={saving || uploading}>
+              Back
+            </button>
+          )}
           <button
             type="button"
             className="payment-clear-corner-btn"

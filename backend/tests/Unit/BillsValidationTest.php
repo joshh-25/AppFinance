@@ -49,6 +49,18 @@ final class BillsValidationTest extends TestCase
         $this->assertSame('', normalize_bill_type_filter('gas'));
     }
 
+    public function testBillJsonPayloadValidationAcceptsEmptyObjectPayload(): void
+    {
+        $decoded = json_decode('{}', true);
+        $this->assertTrue(is_valid_bill_json_payload($decoded));
+    }
+
+    public function testBillJsonPayloadValidationRejectsInvalidPayload(): void
+    {
+        $this->assertFalse(is_valid_bill_json_payload(json_decode('null', true)));
+        $this->assertFalse(is_valid_bill_json_payload('raw-json-string'));
+    }
+
     // ──────────────────────────────────────────────
     // get_bill_type_module_fields
     // ──────────────────────────────────────────────

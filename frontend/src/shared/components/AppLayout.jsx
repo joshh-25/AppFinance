@@ -110,8 +110,13 @@ export default function AppLayout({
     setIsSidebarOpen((current) => !current);
   }
 
-  function billLinkClass(path) {
-    return location.pathname === path || location.pathname === `${path}/list`
+  function billingsLinkClass() {
+    const path = location.pathname;
+    const isBillingsPath =
+      path === '/billings' ||
+      path.startsWith('/property-records') ||
+      (path.startsWith('/bills/') && path !== '/bills/review');
+    return isBillingsPath
       ? 'shell-nav-link active'
       : 'shell-nav-link';
   }
@@ -136,6 +141,23 @@ export default function AppLayout({
     }
   }
 
+  const currentPath = location.pathname;
+  const isBillsModulePath = currentPath.startsWith('/billings') || currentPath.startsWith('/bills/');
+  const isExpensesModulePath = currentPath === '/expenses' || currentPath.startsWith('/records/expenses');
+  const isRecordsModulePath = currentPath.startsWith('/records');
+  const isPropertyRecordsModulePath = currentPath.startsWith('/property-records');
+  const transitionLayerKey = isBillsModulePath
+    ? 'bills-module'
+    : isExpensesModulePath
+      ? 'expenses-module'
+      : isRecordsModulePath
+        ? 'records-module'
+        : isPropertyRecordsModulePath
+          ? 'property-records-module'
+          : `${currentPath}${location.search}`;
+  const hasStableModuleTransition =
+    isBillsModulePath || isExpensesModulePath || isRecordsModulePath || isPropertyRecordsModulePath;
+
   return (
     <div className="shell">
       {isSidebarOpen && (
@@ -149,14 +171,18 @@ export default function AppLayout({
       <aside className={`shell-sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <div className="shell-sidebar-glow" aria-hidden="true" />
         <div className="brand-wrap">
-          <div className="brand">
+          <Link
+            to="/dashboard"
+            className="brand brand-link"
+            onClick={(event) => handleNavigation(event, '/dashboard')}
+          >
             <div className="brand-mark" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 2L4 14h7l-1 8 10-12h-7l0-8z" />
               </svg>
             </div>
             <h2>Finance</h2>
-          </div>
+          </Link>
         </div>
         <nav className="shell-nav">
           <p className="shell-nav-label">Modules</p>
@@ -166,49 +192,23 @@ export default function AppLayout({
           <NavLink to="/records" className={navClassName} onClick={(event) => handleNavigation(event, '/records')}>
             Records
           </NavLink>
-          <NavLink
-            to="/property-records"
-            className={navClassName}
-            onClick={(event) => handleNavigation(event, '/property-records')}
-          >
-            Property Records
-          </NavLink>
-          <p className="shell-nav-label">Bills</p>
           <Link
-            to="/bills/wifi"
-            className={billLinkClass('/bills/wifi')}
-            onClick={(event) => handleNavigation(event, '/bills/wifi')}
+            to="/billings"
+            className={billingsLinkClass()}
+            onClick={(event) => handleNavigation(event, '/billings')}
           >
-            WiFi Bills
-          </Link>
-          <Link
-            to="/bills/water"
-            className={billLinkClass('/bills/water')}
-            onClick={(event) => handleNavigation(event, '/bills/water')}
-          >
-            Water Bills
-          </Link>
-          <Link
-            to="/bills/electricity"
-            className={billLinkClass('/bills/electricity')}
-            onClick={(event) => handleNavigation(event, '/bills/electricity')}
-          >
-            Electricity Bills
-          </Link>
-          <Link
-            to="/bills/association"
-            className={billLinkClass('/bills/association')}
-            onClick={(event) => handleNavigation(event, '/bills/association')}
-          >
-            Association Bills
+            Billings
           </Link>
           <Link
             to="/bills/review"
             className={billReviewLinkClass()}
             onClick={(event) => handleNavigation(event, '/bills/review')}
           >
-            Bill Review
+            Bills Review
           </Link>
+          <NavLink to="/expenses" className={navClassName} onClick={(event) => handleNavigation(event, '/expenses')}>
+            Expenses
+          </NavLink>
         </nav>
         <a href="/Finance/logout.php" className="shell-user">
           <div className="shell-user-avatar">{getUserInitials(displayName)}</div>
@@ -264,22 +264,8 @@ export default function AppLayout({
         {/* Stable keys for modules ensures the outer card container stays permanently mounted during sub-navigation */}
         {/* The 'no-transition' class is added for stable modules to disable global fade-in animations that would move the card */}
         <div
-          key={
-            location.pathname.startsWith('/bills/')
-              ? 'bills-module'
-              : location.pathname.startsWith('/records')
-                ? 'records-module'
-                : location.pathname.startsWith('/property-records')
-                  ? 'property-records-module'
-                  : `${location.pathname}${location.search}`
-          }
-          className={`route-transition-layer ${
-            location.pathname.startsWith('/bills/') ||
-            location.pathname.startsWith('/records') ||
-            location.pathname.startsWith('/property-records')
-              ? 'no-transition'
-              : ''
-          }`.trim()}
+          key={transitionLayerKey}
+          className={`route-transition-layer ${hasStableModuleTransition ? 'no-transition' : ''}`.trim()}
         >
           <div
             className="route-transition-content"

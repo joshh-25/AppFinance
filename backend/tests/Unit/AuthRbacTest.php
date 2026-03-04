@@ -38,9 +38,15 @@ final class AuthRbacTest extends TestCase
             ['list', 'viewer'],
             ['list_merged', 'viewer'],
             ['property_record_list', 'viewer'],
+            ['expense_list', 'viewer'],
+            ['account_lookup_search', 'viewer'],
             ['add', 'editor'],
             ['bill_update', 'editor'],
             ['upload_bill', 'editor'],
+            ['expense_create', 'admin'],
+            ['expense_update', 'admin'],
+            ['expense_delete', 'admin'],
+            ['account_lookup_import', 'admin'],
             ['property_record_create', 'admin'],
             ['property_record_update', 'admin'],
             ['property_record_delete', 'admin'],
@@ -59,11 +65,17 @@ final class AuthRbacTest extends TestCase
     {
         return [
             ['viewer', 'list', true],
+            ['viewer', 'expense_list', true],
+            ['viewer', 'account_lookup_search', true],
             ['viewer', 'add', false],
             ['editor', 'add', true],
+            ['editor', 'account_lookup_import', false],
+            ['editor', 'expense_create', false],
             ['editor', 'property_record_delete', false],
             ['admin', 'property_record_delete', true],
+            ['admin', 'account_lookup_import', true],
             ['admin', 'upload_bill', true],
+            ['admin', 'expense_delete', true],
         ];
     }
 }

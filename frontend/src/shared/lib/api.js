@@ -192,6 +192,37 @@ export async function uploadBill(file, context = {}) {
   return result;
 }
 
+export async function importAccountLookupEntries(payload) {
+  return requestJson('account_lookup_import', {
+    method: 'POST',
+    payload,
+    defaultMessage: 'Failed to import account directory entries.'
+  });
+}
+
+export async function lookupPropertyByAccountNumber(options = {}) {
+  const query = new URLSearchParams();
+  const accountNumber = String(options.accountNumber || '').trim();
+  const utilityType = normalizeBillTypeFilter(options.utilityType || '');
+  const billingPeriod = String(options.billingPeriod || '').trim();
+
+  if (accountNumber === '') {
+    throw new Error('Account number is required.');
+  }
+
+  query.set('account_number', accountNumber);
+  if (utilityType !== '') {
+    query.set('utility_type', utilityType);
+  }
+  if (billingPeriod !== '') {
+    query.set('billing_period', billingPeriod);
+  }
+
+  return requestJson(`account_lookup_search&${query.toString()}`, {
+    defaultMessage: 'No matching property found for this account number.'
+  });
+}
+
 export async function createPropertyRecord(payload) {
   return requestJson('property_record_create', {
     method: 'POST',
@@ -221,5 +252,61 @@ export async function deletePropertyRecord(id) {
     method: 'POST',
     payload: { id },
     defaultMessage: 'Failed to delete property record.'
+  });
+}
+
+export async function fetchExpenses(options = {}) {
+  const query = new URLSearchParams();
+  const page = Number(options.page || 0);
+  const perPage = Number(options.perPage || 0);
+  const search = String(options.search || '').trim();
+
+  if (Number.isFinite(page) && page > 0) {
+    query.set('page', String(page));
+  }
+  if (Number.isFinite(perPage) && perPage > 0) {
+    query.set('per_page', String(perPage));
+  }
+  if (search !== '') {
+    query.set('q', search);
+  }
+
+  const action = query.size > 0 ? `expense_list&${query.toString()}` : 'expense_list';
+  const result = await requestJson(action, {
+    defaultMessage: 'Failed to load expenses.'
+  });
+
+  const data = result.data || [];
+  if (options.includeMeta) {
+    return {
+      data,
+      meta: result.meta || null
+    };
+  }
+
+  return data;
+}
+
+export async function createExpense(payload) {
+  return requestJson('expense_create', {
+    method: 'POST',
+    payload,
+    defaultMessage: 'Failed to save expense.'
+  });
+}
+
+export async function updateExpense(id, payload) {
+  return requestJson('expense_update', {
+    method: 'POST',
+    payload: { id, ...payload },
+    defaultMessage: 'Failed to update expense.'
+  });
+}
+
+export async function deleteExpense(id) {
+  return requestJson('expense_delete', {
+    method: 'POST',
+    payload: { id },
+    defaultMessage: 'Failed to delete expense.'
   });
 }

@@ -288,6 +288,42 @@ describe('Billing flow integration coverage', () => {
     expect(screen.getByText('250')).toBeInTheDocument();
   });
 
+  it('requires module selection before edit when All view row contains multiple bill modules', async () => {
+    mockBills = [
+      {
+        id: 401,
+        property_list_id: 1,
+        dd: '24 LPS 9PQ',
+        property: 'Lafayette',
+        bill_type: 'water',
+        water_account_no: 'WTR-401',
+        water_amount: '900',
+        water_due_date: '2026-03-10',
+        water_payment_status: 'Unpaid'
+      },
+      {
+        id: 402,
+        property_list_id: 1,
+        dd: '24 LPS 9PQ',
+        property: 'Lafayette',
+        bill_type: 'electricity',
+        electricity_account_no: 'ELEC-402',
+        electricity_amount: '1900',
+        electricity_due_date: '2026-03-11',
+        electricity_payment_status: 'Unpaid'
+      }
+    ];
+
+    renderWithProviders(<RecordsPage />, ['/records?bill=all']);
+
+    const propertyCell = await screen.findByText('Lafayette');
+    fireEvent.click(propertyCell.closest('tr'));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+
+    expect(await screen.findByText(/multiple bill modules|no editable bill id exists/i)).toBeInTheDocument();
+    expect(window.sessionStorage.getItem('finance:records-edit-context')).toBeNull();
+  });
+
   it('creates a wifi bill and surfaces it in Records wifi view', async () => {
     const paymentView = renderWithProviders(<WifiBillsPage />, ['/bills/wifi']);
 
@@ -316,6 +352,54 @@ describe('Billing flow integration coverage', () => {
 
     expect(await screen.findByText('1500')).toBeInTheDocument();
     expect(await screen.findByText('WIFI-999')).toBeInTheDocument();
+  });
+
+  it('opens module upload modal from WiFi page instead of navigating to Bill Review', async () => {
+    renderWithProviders(<WifiBillsPage />, ['/bills/wifi']);
+
+    await waitFor(() => {
+      expect(fetchPropertyRecords).toHaveBeenCalled();
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Upload Bill' }));
+
+    expect(await screen.findByText('Upload files')).toBeInTheDocument();
+    expect(screen.queryByText('Bills Review Queue')).not.toBeInTheDocument();
+  });
+
+  it('rejects mismatched module upload and shows bill type mismatch dialog', async () => {
+    uploadBill.mockResolvedValueOnce({
+      success: true,
+      data: {
+        bill_type: 'electricity',
+        electricity_account_no: 'ELEC-777',
+        electricity_amount: '2500'
+      }
+    });
+
+    const paymentView = renderWithProviders(<WaterBillsPage />, ['/bills/water']);
+
+    await waitFor(() => {
+      expect(fetchPropertyRecords).toHaveBeenCalled();
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Upload Bill' }));
+    expect(await screen.findByText('Upload files')).toBeInTheDocument();
+
+    const uploadInput = paymentView.container.querySelector('.upload-modal input[type="file"]');
+    expect(uploadInput).not.toBeNull();
+
+    const wrongFile = new File(['dummy content'], 'electric-bill.pdf', { type: 'application/pdf' });
+    fireEvent.change(uploadInput, { target: { files: [wrongFile] } });
+
+    await waitFor(() => {
+      expect(uploadBill).toHaveBeenCalledTimes(1);
+    });
+
+    expect(await screen.findByText('Bill Type Mismatch')).toBeInTheDocument();
+    expect(screen.getByText(/This file was rejected and was not added to Bills Review\./)).toBeInTheDocument();
+    expect(screen.getByLabelText('Water Account No.')).toHaveValue('');
+    expect(createBill).not.toHaveBeenCalled();
   });
 
   it('creates an electricity bill and surfaces it in Records electricity view', async () => {

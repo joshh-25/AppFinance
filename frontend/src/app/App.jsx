@@ -9,7 +9,10 @@ import DashboardPage from '../features/dashboard/DashboardPage.jsx';
 import PaymentFormPage from '../features/bills/PaymentFormPage.jsx';
 import BillReviewPage from '../features/bills/BillReviewPage.jsx';
 import PropertyRecordsPage from '../features/property/PropertyRecordsPage.jsx';
-import RecordsPage from '../features/bills/RecordsPage.jsx';
+import BillsRecordsPage from '../features/bills/RecordsPage.jsx';
+import ExpensesPage from '../features/expenses/ExpensesPage.jsx';
+import ExpensesRecordsPage from '../features/records/ExpensesRecordsPage.jsx';
+import RecordsLandingPage from '../features/records/RecordsLandingPage.jsx';
 import { checkSession } from '../shared/lib/auth.js';
 import ErrorBoundary from '../shared/components/ErrorBoundary.jsx';
 
@@ -53,6 +56,7 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route path="/billings" element={<Navigate to="/bills/wifi" replace />} />
 
       {/* Single persistent bill route — no re-mount when switching tabs */}
       <Route
@@ -71,14 +75,38 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      {/* /bills with no type → default to water */}
-      <Route path="/bills" element={<Navigate to="/bills/water" replace />} />
+      {/* /bills with no type → default to wifi */}
+      <Route path="/bills" element={<Navigate to="/bills/wifi" replace />} />
 
       <Route
         path="/records"
         element={
           <ProtectedRoute>
-            <RecordsPage />
+            <RecordsLandingPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/records/bills"
+        element={
+          <ProtectedRoute>
+            <BillsRecordsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/records/expenses"
+        element={
+          <ProtectedRoute>
+            <ExpensesRecordsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/expenses"
+        element={
+          <ProtectedRoute>
+            <ExpensesPage />
           </ProtectedRoute>
         }
       />

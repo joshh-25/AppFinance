@@ -416,7 +416,7 @@ export default function BillReviewPage() {
     >
       <Toast toasts={toasts} onDismiss={removeToast} />
 
-      <section className="card bill-form-card property-records-card">
+      <section className="card bill-form-card property-records-card bill-review-card">
         <div className="card-title-row">
           <div className="card-title-left">
             <h3 className="card-title">Bills Review Queue</h3>
@@ -463,7 +463,6 @@ export default function BillReviewPage() {
                         onChange={handleSelectAllToggle}
                       />
                     </th>
-                    <th>File</th>
                     <th>Type</th>
                     <th>Property / DD</th>
                     <th>Billing Period</th>
@@ -487,7 +486,6 @@ export default function BillReviewPage() {
                             disabled={!isRowSelectable(row)}
                           />
                         </td>
-                        <td>{row.source_file_name || '-'}</td>
                         <td>{BILL_TYPE_LABELS[row.bill_type] || row.bill_type}</td>
                         <td>
                           {isEditing ? (

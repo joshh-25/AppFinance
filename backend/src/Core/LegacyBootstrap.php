@@ -171,6 +171,10 @@ function enforce_csrf_for_write_actions($action)
         'property_record_create',
         'property_record_update',
         'property_record_delete',
+        'expense_create',
+        'expense_update',
+        'expense_delete',
+        'account_lookup_import',
     ];
 
     if (!in_array($action, $protectedActions, true)) {

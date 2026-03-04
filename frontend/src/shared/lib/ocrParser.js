@@ -131,6 +131,51 @@ function normalizeDateValue(value) {
     return raw;
 }
 
+function normalizeBillingPeriodValue(value) {
+    const raw = cleanTextValue(value);
+    if (raw === '') {
+        return '';
+    }
+
+    if (/^\d{4}-(0[1-9]|1[0-2])$/.test(raw)) {
+        return raw;
+    }
+
+    const yearMonth = raw.match(/^(\d{4})[/-](0?[1-9]|1[0-2])$/);
+    if (yearMonth) {
+        return `${yearMonth[1]}-${String(Number(yearMonth[2])).padStart(2, '0')}`;
+    }
+
+    const monthYear = raw.match(/^(jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|sept|september|oct|october|nov|november|dec|december)\s+(\d{4})$/i);
+    if (monthYear) {
+        const monthMap = {
+            jan: '01', january: '01',
+            feb: '02', february: '02',
+            mar: '03', march: '03',
+            apr: '04', april: '04',
+            may: '05',
+            jun: '06', june: '06',
+            jul: '07', july: '07',
+            aug: '08', august: '08',
+            sep: '09', sept: '09', september: '09',
+            oct: '10', october: '10',
+            nov: '11', november: '11',
+            dec: '12', december: '12'
+        };
+        const monthToken = monthYear[1].toLowerCase();
+        if (monthMap[monthToken]) {
+            return `${monthYear[2]}-${monthMap[monthToken]}`;
+        }
+    }
+
+    const normalizedDate = normalizeDateValue(raw);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(normalizedDate)) {
+        return normalizedDate.slice(0, 7);
+    }
+
+    return '';
+}
+
 function normalizeAmountValue(value) {
     const raw = cleanTextValue(value);
     if (raw === '') {
@@ -619,12 +664,52 @@ export function normalizeUploadData(input) {
         parsedFromText.electricity_total_amount_due ||
         pickUploadValue(lookup, ['total_amount_due', 'totalAmountDue', 'amount_due', 'amountDue', 'subtotal'], '')
     );
+    const electricityDueDate = normalizeDateValue(
+        parsedFromText.electricity_due_date ||
+        pickUploadValue(
+            lookup,
+            [
+                'electricity_due_date',
+                'electricityDueDate',
+                'current_bill_due_date',
+                'currentBillDueDate',
+                'due_date',
+                'dueDate'
+            ],
+            ''
+        )
+    );
+    const associationDueDate = normalizeDateValue(
+        pickUploadValue(lookup, ['association_due_date', 'associationDueDate'], parsedFromText.association_due_date || '')
+    );
+    const billingPeriod = normalizeBillingPeriodValue(
+        pickUploadValue(
+            lookup,
+            [
+                'billing_period',
+                'billingPeriod',
+                'billing_month',
+                'billingMonth',
+                'billing_date',
+                'billingDate',
+                'bill_date',
+                'billDate',
+                'statement_date',
+                'statementDate'
+            ],
+            ''
+        )
+    ) || normalizeBillingPeriodValue(parsedFromText.billing_period || '')
+      || normalizeBillingPeriodValue(pickUploadValue(lookup, ['electricity_billing_date', 'electricityBillingDate'], ''))
+      || normalizeBillingPeriodValue(electricityDueDate)
+      || normalizeBillingPeriodValue(associationDueDate);
 
     let result = {
         bill_type: resolvedBillType,
         property_list_id: Number(pickUploadValue(lookup, ['property_list_id', 'propertyListId'], '0')) || 0,
         dd: pickUploadValue(lookup, ['dd', 'property_dd', 'propertydd'], parsedFromText.dd || ''),
         property: pickUploadValue(lookup, ['property', 'property_name', 'propertyName'], parsedFromText.property || ''),
+        billing_period: billingPeriod,
         unit_owner: pickUploadValue(lookup, ['unit_owner', 'unitOwner', 'tenant_name', 'tenantName']),
         classification: pickUploadValue(lookup, ['classification']),
         deposit: normalizeAmountValue(pickUploadValue(lookup, ['deposit'])),
@@ -676,21 +761,7 @@ export function normalizeUploadData(input) {
                 filenameAccountNo
             ),
         electricity_amount: electricityAmount,
-        electricity_due_date: normalizeDateValue(
-            parsedFromText.electricity_due_date ||
-            pickUploadValue(
-                lookup,
-                [
-                    'electricity_due_date',
-                    'electricityDueDate',
-                    'current_bill_due_date',
-                    'currentBillDueDate',
-                    'due_date',
-                    'dueDate'
-                ],
-                ''
-            )
-        ),
+        electricity_due_date: electricityDueDate,
         electricity_payment_status:
             pickUploadValue(
                 lookup,
@@ -698,9 +769,7 @@ export function normalizeUploadData(input) {
                 parsedFromText.electricity_payment_status || ''
             ) || (electricityAmount !== '' ? 'Unpaid' : ''),
         association_dues: associationDues,
-        association_due_date: normalizeDateValue(
-            pickUploadValue(lookup, ['association_due_date', 'associationDueDate'], parsedFromText.association_due_date || '')
-        ),
+        association_due_date: associationDueDate,
         association_payment_status:
             pickUploadValue(
                 lookup,
