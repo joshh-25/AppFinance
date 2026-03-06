@@ -6,21 +6,28 @@ Use this folder for the commands you need to run the Finance app.
 - Start `Apache` and `MySQL` in XAMPP Control Panel.
 - Make sure `composer`, `php`, `node`, and `npm` are available in terminal.
 
-## 1) First-time setup (install + migrate + build)
+## 1) Build flow (migrate + build)
 ```powershell
 cd C:\xampp\htdocs\Finance
 & ".\Run Funtion\01_setup_and_build.cmd"
 ```
 
-Manual version (if you want to type each command):
+Manual version:
 ```powershell
 cd C:\xampp\htdocs\Finance\backend
-composer install
 php tools\run_migrations.php
 
 cd C:\xampp\htdocs\Finance\frontend
-npm install
 npm run build
+```
+
+One-time install commands (only if dependencies are missing):
+```powershell
+cd C:\xampp\htdocs\Finance\backend
+composer install
+
+cd C:\xampp\htdocs\Finance\frontend
+npm install
 ```
 
 ## 2) Run OCR API

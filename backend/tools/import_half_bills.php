@@ -13,7 +13,7 @@ function hasVal($value) {
     return trim((string)$value) !== '' && strtoupper(trim((string)$value)) !== 'N/A' && trim((string)$value) !== '-';
 }
 
-$csvPath = __DIR__ . '/../ExcelExample/BILLS FEBRUARY 2026.csv';
+$csvPath = __DIR__ . '/../Examples/Excel/BILLS FEBRUARY 2026.csv';
 if (!file_exists($csvPath)) {
     fwrite(STDERR, "CSV not found: $csvPath\n");
     exit(1);
@@ -190,3 +190,5 @@ echo "Imported half rows: {$half}\n";
 echo "Upserted property_list: {$propertyInserted}\n";
 echo "Inserted property_billing_records: {$billInserted}\n";
 ?>
+
+

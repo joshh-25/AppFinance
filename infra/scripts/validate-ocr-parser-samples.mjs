@@ -96,9 +96,9 @@ async function main() {
   const checkMode = args.has('--check') || !writeMode;
 
   const repoRoot = process.cwd();
-  const inputPath = path.join(repoRoot, 'docs', 'samples', 'parser_validation_input.json');
-  const jsonOutputPath = path.join(repoRoot, 'docs', 'samples', 'parser_validation_report.json');
-  const markdownOutputPath = path.join(repoRoot, 'docs', 'samples', 'parser_validation_report.md');
+  const inputPath = path.join(repoRoot, 'Examples', 'Samples', 'parser_validation_input.json');
+  const jsonOutputPath = path.join(repoRoot, 'Examples', 'Samples', 'parser_validation_report.json');
+  const markdownOutputPath = path.join(repoRoot, 'Examples', 'Samples', 'parser_validation_report.md');
   const parserPath = path.join(repoRoot, 'frontend', 'src', 'shared', 'lib', 'ocrParser.js');
 
   if (!fs.existsSync(inputPath)) {
@@ -290,3 +290,4 @@ main().catch((error) => {
   console.error('[parser-validation] Error:', error?.message || error);
   process.exit(1);
 });
+

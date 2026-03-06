@@ -96,6 +96,12 @@ function get_db_connection() {
     $user = get_app_config('DB_USER', 'root');
     $pass = get_app_config('DB_PASS', '');
 
+    $placeholderUsers = ['databaseuser', 'your_db_user', 'changeme'];
+    $placeholderPasswords = ['password', 'your_db_password', 'changeme'];
+    if (in_array(strtolower(trim((string)$user)), $placeholderUsers, true) || in_array(strtolower(trim((string)$pass)), $placeholderPasswords, true)) {
+        die("Configuration error: Replace placeholder DB credentials in .env before running the app.");
+    }
+
     try {
         $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $user, $pass);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);

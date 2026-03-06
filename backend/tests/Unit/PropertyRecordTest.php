@@ -126,4 +126,25 @@ final class PropertyRecordTest extends TestCase
         $result = normalize_property_record_payload(['billing_period' => 'March 2025']);
         $this->assertSame('2025-03', $result['billing_period']);
     }
+
+    public function testNormalizeCsvPayloadUsesDuePeriodWhenProvided(): void
+    {
+        $result = normalize_csv_payload([
+            'bill_type' => 'water',
+            'due_period' => '2026-03',
+            'water_due_date' => '2026-03-20',
+        ]);
+
+        $this->assertSame('2026-03', $result['due_period']);
+    }
+
+    public function testNormalizeCsvPayloadDerivesDuePeriodFromDueDateWhenMissing(): void
+    {
+        $result = normalize_csv_payload([
+            'bill_type' => 'internet',
+            'wifi_due_date' => '2026-04-15',
+        ]);
+
+        $this->assertSame('2026-04', $result['due_period']);
+    }
 }

@@ -150,7 +150,7 @@ export async function uploadBill(file, context = {}) {
   formData.append('property_list_id', String(context.property_list_id || ''));
   formData.append('dd', String(context.dd || ''));
   formData.append('property', String(context.property || ''));
-  formData.append('billing_period', String(context.billing_period || ''));
+  formData.append('due_period', String(context.due_period || ''));
   formData.append('csrf_token', await ensureCsrfToken());
 
   const controller = new AbortController();
@@ -192,6 +192,13 @@ export async function uploadBill(file, context = {}) {
   return result;
 }
 
+export async function fetchOcrHealth() {
+  const result = await requestJson('ocr_health', {
+    defaultMessage: 'Failed to check OCR service health.'
+  });
+  return result;
+}
+
 export async function importAccountLookupEntries(payload) {
   return requestJson('account_lookup_import', {
     method: 'POST',
@@ -204,7 +211,7 @@ export async function lookupPropertyByAccountNumber(options = {}) {
   const query = new URLSearchParams();
   const accountNumber = String(options.accountNumber || '').trim();
   const utilityType = normalizeBillTypeFilter(options.utilityType || '');
-  const billingPeriod = String(options.billingPeriod || '').trim();
+  const duePeriod = String(options.duePeriod || '').trim();
 
   if (accountNumber === '') {
     throw new Error('Account number is required.');
@@ -214,8 +221,8 @@ export async function lookupPropertyByAccountNumber(options = {}) {
   if (utilityType !== '') {
     query.set('utility_type', utilityType);
   }
-  if (billingPeriod !== '') {
-    query.set('billing_period', billingPeriod);
+  if (duePeriod !== '') {
+    query.set('due_period', duePeriod);
   }
 
   return requestJson(`account_lookup_search&${query.toString()}`, {
@@ -310,3 +317,4 @@ export async function deleteExpense(id) {
     defaultMessage: 'Failed to delete expense.'
   });
 }
+

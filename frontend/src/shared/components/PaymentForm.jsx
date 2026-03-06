@@ -1,6 +1,8 @@
 // Finance App File: frontend/src/components/payment/PaymentForm.jsx
 // Purpose: Presentational payment form and records table UI for bill modules.
 
+import { SkeletonLine } from './Skeleton.jsx';
+
 const AMOUNT_FIELDS = new Set([
   'wifi_amount',
   'water_amount',
@@ -50,6 +52,8 @@ export default function PaymentForm({
   onClearFields,
   saving,
   uploading,
+  ocrUploadHealthy = true,
+  ocrUploadMessage = '',
   prevFlowPath,
   isLastFlowStep,
   nextFlowPath,
@@ -89,7 +93,13 @@ export default function PaymentForm({
                 </span>
                 {isComboDropdownOpen && (
                   <div className="combo-list">
-                    {loadingPropertyRecords && <p className="muted-text combo-item">Loading options...</p>}
+                    {loadingPropertyRecords && (
+                      <div className="records-loading-inline" aria-hidden="true">
+                        <SkeletonLine width="100%" height={12} radius={7} />
+                        <SkeletonLine width="92%" height={12} radius={7} />
+                        <SkeletonLine width="84%" height={12} radius={7} />
+                      </div>
+                    )}
                     {!loadingPropertyRecords && filteredPropertyOptions.length === 0 && (
                       <p className="muted-text combo-item">No matching property record.</p>
                     )}
@@ -110,11 +120,11 @@ export default function PaymentForm({
               </div>
             </label>
             <label className="bill-header-field bill-header-field-period">
-              Billing Period
+              Due Period
               <input
-                name="billing_period"
+                name="due_period"
                 type="month"
-                value={form.billing_period || ''}
+                value={form.due_period || ''}
                 autoComplete="off"
                 onChange={onUpdateField}
               />
@@ -122,7 +132,13 @@ export default function PaymentForm({
           </div>
         </div>
         <div className="card-title-actions">
-          <button type="button" className="btn btn-secondary" onClick={onOpenUpload} disabled={saving || uploading}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={onOpenUpload}
+            disabled={saving || uploading || !ocrUploadHealthy}
+            title={!ocrUploadHealthy && ocrUploadMessage ? ocrUploadMessage : ''}
+          >
             Upload Bill
           </button>
           {panelMode === 'form' && (
@@ -173,7 +189,15 @@ export default function PaymentForm({
         </div>
       )}
 
-      {panelMode === 'table' && loadingBillRows && <p className="muted-text">Loading records...</p>}
+      {panelMode === 'table' && loadingBillRows && (
+        <div className="records-loading-shell" role="status" aria-live="polite" aria-label="Loading bill records">
+          <div className="records-loading-table">
+            {Array.from({ length: 8 }).map((_, index) => (
+              <SkeletonLine key={`bill-form-loading-${index}`} width="100%" height={15} radius={8} />
+            ))}
+          </div>
+        </div>
+      )}
       {panelMode === 'table' && isBillRowsError && (
         <p className="error">{billRowsError?.message || 'Failed to load records.'}</p>
       )}
@@ -274,3 +298,4 @@ export default function PaymentForm({
     </section>
   );
 }
+

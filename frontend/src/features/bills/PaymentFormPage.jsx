@@ -12,15 +12,18 @@ import UploadModal from '../../shared/components/UploadModal.jsx';
 import ErrorDialog from '../../shared/components/ErrorDialog.jsx';
 import {
   createBill,
+  fetchOcrHealth,
   fetchBills,
   fetchPropertyRecords,
   lookupPropertyByAccountNumber,
   updateBill,
   uploadBill
 } from '../../shared/lib/api.js';
+import { cleanTextValue, getPropertyRecordLabel } from '../../shared/lib/billPropertyUtils.js';
 import { getBillingsFlowNextPath, getBillingsFlowPrevPath } from '../../shared/lib/billingsFlow.js';
 import { normalizeAccountNumberForLookup } from '../../shared/lib/accountLookupParser.js';
 import { detectBillTypeFromData, normalizeUploadData, validateUploadExtraction } from '../../shared/lib/ocrParser.js';
+import { resolveUploadPropertyBeforeRender } from './lib/uploadPropertyResolver.js';
 import {
   clearScopedGlobalEditMode,
   getGlobalEditMode,
@@ -42,7 +45,7 @@ const INITIAL_FORM = {
   property_list_id: 0,
   dd: '',
   property: '',
-  billing_period: '',
+  due_period: '',
   unit_owner: '',
   classification: '',
   deposit: '',
@@ -73,7 +76,7 @@ const INITIAL_EDIT_LOCK = {
   property_list_id: 0,
   dd: '',
   property: '',
-  billing_period: '',
+  due_period: '',
   bill_type: ''
 };
 
@@ -115,7 +118,7 @@ const SHARED_BILL_SAVE_FIELDS = [
   'property_list_id',
   'dd',
   'property',
-  'billing_period',
+  'due_period',
   'unit_owner',
   'classification',
   'deposit',
@@ -145,6 +148,7 @@ const ACCOUNT_LOOKUP_FIELD_BY_BILL_TYPE = {
   water: 'water_account_no',
   electricity: 'electricity_account_no'
 };
+const BILL_DUE_DATE_FIELDS = new Set(['wifi_due_date', 'water_due_date', 'electricity_due_date', 'association_due_date']);
 
 const ALL_TYPE_FIELDS = [
   ['internet_provider', 'Internet Provider'],
@@ -165,12 +169,6 @@ const ALL_TYPE_FIELDS = [
   ['association_payment_status', 'Association Payment Status']
 ];
 
-function cleanTextValue(value) {
-  return String(value ?? '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
 function normalizeBillTypeValue(value) {
   const normalized = cleanTextValue(value).toLowerCase();
   if (normalized === 'wifi') {
@@ -180,6 +178,14 @@ function normalizeBillTypeValue(value) {
     return 'association_dues';
   }
   return normalized;
+}
+
+function deriveDuePeriodFromDueDate(value) {
+  const raw = String(value || '').trim();
+  if (/^\d{4}-(0[1-9]|1[0-2])-\d{2}$/.test(raw)) {
+    return raw.slice(0, 7);
+  }
+  return '';
 }
 
 function rowHasBillTypeData(row, billType) {
@@ -245,7 +251,7 @@ function buildEditLock(form, billType) {
     property_list_id: form.property_list_id,
     dd: form.dd,
     property: form.property,
-    billing_period: form.billing_period,
+    due_period: form.due_period,
     bill_type: billType
   };
 }
@@ -269,7 +275,7 @@ function buildUpdatePayloadForType(form, type, editLock = INITIAL_EDIT_LOCK) {
     target_property_list_id: Number(editLock?.property_list_id || 0),
     target_dd: editLock?.dd || '',
     target_property: editLock?.property || '',
-    target_billing_period: editLock?.billing_period || '',
+    target_due_period: editLock?.due_period || '',
     target_bill_type: editLock?.bill_type || type
   };
 }
@@ -292,7 +298,7 @@ function buildPropertyRecordContextFromBillForm(form) {
     property_list_id: Number(source.property_list_id || 0),
     dd: source.dd || '',
     property: source.property || '',
-    billing_period: source.billing_period || '',
+    due_period: source.due_period || '',
     unit_owner: source.unit_owner || '',
     classification: source.classification || '',
     deposit: source.deposit || '',
@@ -307,7 +313,7 @@ function buildPropertyRecordContextFromBillForm(form) {
 function toFriendlyErrorMessage(error) {
   const msg = error?.message || String(error);
   if (msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('already exists')) {
-    return 'A record with this DD and Billing Period already exists.';
+    return 'A record with this DD and Due Period already exists.';
   }
   return msg;
 }
@@ -353,6 +359,8 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
   });
   const [comboSearch, setComboSearch] = useState('');
   const [isComboDropdownOpen, setIsComboDropdownOpen] = useState(false);
+  const [ocrUploadHealthy, setOcrUploadHealthy] = useState(true);
+  const [ocrUploadHealthMessage, setOcrUploadHealthMessage] = useState('');
   const [editingBillId, setEditingBillId] = useState(null);
   const [editLock, setEditLock] = useState(INITIAL_EDIT_LOCK);
   const [panelMode, setPanelMode] = useState(isListRoute ? 'table' : 'form');
@@ -369,6 +377,7 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
   const comboSearchRef = useRef('');
   const autoLookupRequestRef = useRef(0);
   const lastAutoLookupKeyRef = useRef('');
+  const saveBillRef = useRef(async () => false);
   const baselineSnapshotRef = useRef({
     form: INITIAL_FORM,
     comboSearch: ''
@@ -395,6 +404,30 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
     [form, comboSearch, baselineSnapshot]
   );
 
+  const isRecordsEditModeActive = useCallback(() => {
+    const snapshot = getScopedGlobalEditMode('bills');
+    return snapshot.active === true && snapshot.context?.source === 'records';
+  }, []);
+
+  const setBillsGlobalEditMode = useCallback(
+    (nextContext) => {
+      if (isRecordsEditModeActive()) {
+        return;
+      }
+
+      setScopedGlobalEditMode('bills', nextContext);
+    },
+    [isRecordsEditModeActive]
+  );
+
+  const clearGlobalEditModeIfNotRecords = useCallback(() => {
+    if (isRecordsEditModeActive()) {
+      return;
+    }
+
+    clearScopedGlobalEditMode('bills');
+  }, [isRecordsEditModeActive]);
+
   useEffect(() => {
     setPanelMode(isListRoute ? 'table' : 'form');
   }, [isListRoute]);
@@ -406,6 +439,31 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
   }, [form, comboSearch, baselineSnapshot]);
 
   useEffect(() => subscribeGlobalEditMode(setGlobalEditSnapshot), []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const health = await fetchOcrHealth();
+        if (cancelled) {
+          return;
+        }
+        const healthy = health?.healthy !== false;
+        setOcrUploadHealthy(healthy);
+        setOcrUploadHealthMessage(String(health?.message || 'OCR service is not reachable.'));
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+        setOcrUploadHealthy(false);
+        setOcrUploadHealthMessage(String(error?.message || 'OCR service health check failed.'));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const timerId = window.setTimeout(() => setIsNavigationStateHydrated(true), 0);
@@ -474,8 +532,7 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
       clearScopedGlobalEditMode('bills');
       window.sessionStorage.removeItem(RECORDS_EDIT_CONTEXT_KEY);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeBillType, billSelectionKey, editDraftKey, normalizedBillMode]);
+  }, [activeBillType, billSelectionKey, editDraftKey, normalizedBillMode, setBillsGlobalEditMode]);
 
   useEffect(() => {
     if (window.sessionStorage.getItem(RECORDS_EDIT_CONTEXT_KEY)) {
@@ -503,8 +560,7 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
     setEditingBillId(null);
     setEditLock(INITIAL_EDIT_LOCK);
     clearGlobalEditModeIfNotRecords();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeBillType, billSelectionKey, editDraftKey, fromPropertyRecordsNext]);
+  }, [activeBillType, billSelectionKey, clearGlobalEditModeIfNotRecords, editDraftKey, fromPropertyRecordsNext]);
 
   useEffect(() => {
     const rawRecordsContext = window.sessionStorage.getItem(RECORDS_EDIT_CONTEXT_KEY);
@@ -572,8 +628,7 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
     } catch {
       window.sessionStorage.removeItem(editDraftKey);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeBillType, editDraftKey, normalizedBillMode]);
+  }, [activeBillType, editDraftKey, normalizedBillMode, setBillsGlobalEditMode]);
 
   useEffect(() => {
     if (editingBillId === null) {
@@ -615,7 +670,7 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
       const persistedPropertyListId = Number(selection.property_list_id || persistedForm?.property_list_id || 0);
       const persistedDd = String(selection.dd || persistedForm?.dd || '');
       const persistedProperty = String(selection.property || persistedForm?.property || '');
-      const persistedBillingPeriod = String(selection.billing_period || persistedForm?.billing_period || '');
+      const persistedBillingPeriod = String(selection.due_period || persistedForm?.due_period || '');
       const persistedComboSearch = String(selection.comboSearch || '');
 
       const nextForm = {
@@ -625,7 +680,7 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
         property_list_id: persistedPropertyListId,
         dd: persistedDd,
         property: persistedProperty,
-        billing_period: persistedBillingPeriod
+        due_period: persistedBillingPeriod
       };
       const nextBaseline = {
         form: nextForm,
@@ -663,7 +718,7 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
       property_list_id: Number(form.property_list_id || 0),
       dd: form.dd || '',
       property: form.property || '',
-      billing_period: form.billing_period || '',
+      due_period: form.due_period || '',
       comboSearch: comboSearch || ''
     };
     window.sessionStorage.setItem(billSelectionKey, JSON.stringify(payload));
@@ -742,8 +797,8 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
     );
     const nextBillingPeriod = String(
       shouldStartFreshFromPropertyRecords
-        ? context.billing_period || ''
-        : selection?.billing_period || persistedForm?.billing_period || context.billing_period || ''
+        ? context.due_period || ''
+        : selection?.due_period || persistedForm?.due_period || context.due_period || ''
     );
     const prefilledCreateForm = {
       ...buildClearedFormForBillType(activeBillType),
@@ -752,7 +807,7 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
       property_list_id: nextPropertyListId,
       dd: nextDdValue,
       property: nextPropertyValue,
-      billing_period: nextBillingPeriod,
+      due_period: nextBillingPeriod,
       unit_owner: context.unit_owner || '',
       classification: context.classification || '',
       deposit: context.deposit || '',
@@ -820,39 +875,17 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
     }
   }, [forcedBillType, form.bill_type]);
 
-  function isRecordsEditModeActive() {
-    const snapshot = getScopedGlobalEditMode('bills');
-    return snapshot.active === true && snapshot.context?.source === 'records';
-  }
-
-  function setBillsGlobalEditMode(nextContext) {
-    if (isRecordsEditModeActive()) {
-      return;
-    }
-
-    setScopedGlobalEditMode('bills', nextContext);
-  }
-
-  function clearGlobalEditModeIfNotRecords() {
-    if (isRecordsEditModeActive()) {
-      return;
-    }
-
-    clearScopedGlobalEditMode('bills');
-  }
-
   function updateField(event) {
     const { name, value } = event.target;
     const next = { ...formRef.current, [name]: value };
+    if (BILL_DUE_DATE_FIELDS.has(name)) {
+      const derivedDuePeriod = deriveDuePeriodFromDueDate(value);
+      if (derivedDuePeriod !== '') {
+        next.due_period = derivedDuePeriod;
+      }
+    }
     formRef.current = next;
     setForm(next);
-  }
-
-  function getPropertyRecordLabel(record) {
-    const propertyValue = String(record.property || '').trim();
-    const ddValue = String(record.dd || '').trim();
-    const baseLabel = propertyValue !== '' ? propertyValue : ddValue;
-    return baseLabel;
   }
 
   const filteredPropertyOptions = useMemo(() => {
@@ -872,7 +905,7 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
         property_list_id: Number(nextForm.property_list_id || 0),
         dd: nextForm.dd || '',
         property: nextForm.property || '',
-        billing_period: nextForm.billing_period || '',
+        due_period: nextForm.due_period || '',
         comboSearch: label
       })
     );
@@ -894,13 +927,20 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
       return false;
     }
 
+    const canonicalRecord =
+      resolvedPropertyListId > 0
+        ? propertyRecords.find((record) => Number(record.property_list_id || record.id || 0) === resolvedPropertyListId)
+        : null;
+    const canonicalProperty = String(canonicalRecord?.property || '').trim();
+    const canonicalDd = String(canonicalRecord?.dd || '').trim();
+
     const next = {
       ...formRef.current,
       bill_type: activeBillType,
       property_list_id: resolvedPropertyListId > 0 ? resolvedPropertyListId : Number(formRef.current.property_list_id || 0),
-      dd: resolvedDd || formRef.current.dd || '',
-      property: resolvedPropertyName || formRef.current.property || '',
-      billing_period: formRef.current.billing_period || match.billing_period || '',
+      dd: canonicalDd || resolvedDd || formRef.current.dd || '',
+      property: canonicalProperty || resolvedPropertyName || formRef.current.property || '',
+      due_period: formRef.current.due_period || match.due_period || '',
       unit_owner: match.unit_owner || formRef.current.unit_owner || '',
       classification: match.classification || formRef.current.classification || '',
       deposit: match.deposit || formRef.current.deposit || '',
@@ -919,7 +959,52 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
     setIsComboDropdownOpen(false);
     persistBillSelection(next, label);
     return true;
-  }, [activeBillType, persistBillSelection]);
+  }, [activeBillType, persistBillSelection, propertyRecords]);
+
+  useEffect(() => {
+    const propertyListId = Number(form.property_list_id || 0);
+    if (propertyListId <= 0 || !Array.isArray(propertyRecords) || propertyRecords.length === 0) {
+      return;
+    }
+
+    const canonicalRecord = propertyRecords.find(
+      (record) => Number(record.property_list_id || record.id || 0) === propertyListId
+    );
+    if (!canonicalRecord) {
+      return;
+    }
+
+    const canonicalProperty = String(canonicalRecord.property || '').trim();
+    const canonicalDd = String(canonicalRecord.dd || '').trim();
+    if (canonicalProperty === '' && canonicalDd === '') {
+      return;
+    }
+
+    if (canonicalProperty === String(form.property || '').trim() && canonicalDd === String(form.dd || '').trim()) {
+      return;
+    }
+
+    const next = {
+      ...formRef.current,
+      property: canonicalProperty || formRef.current.property || '',
+      dd: canonicalDd || formRef.current.dd || '',
+      unit_owner: canonicalRecord.unit_owner || formRef.current.unit_owner || '',
+      classification: canonicalRecord.classification || formRef.current.classification || '',
+      deposit: canonicalRecord.deposit || formRef.current.deposit || '',
+      rent: canonicalRecord.rent || formRef.current.rent || '',
+      per_property_status: canonicalRecord.per_property_status || formRef.current.per_property_status || '',
+      real_property_tax: canonicalRecord.real_property_tax || formRef.current.real_property_tax || '',
+      rpt_payment_status: canonicalRecord.rpt_payment_status || formRef.current.rpt_payment_status || '',
+      penalty: canonicalRecord.penalty || formRef.current.penalty || ''
+    };
+
+    const label = next.property && String(next.property).trim() !== '' ? next.property : next.dd || '';
+    formRef.current = next;
+    setForm(next);
+    comboSearchRef.current = label;
+    setComboSearch(label);
+    persistBillSelection(next, label);
+  }, [form.property_list_id, form.property, form.dd, persistBillSelection, propertyRecords]);
 
   function handleOptionSelect(record) {
     const selectedPropertyListId = Number(record.property_list_id || record.id || 0);
@@ -935,7 +1020,7 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
       property_list_id: selectedPropertyListId,
       dd: record.dd || '',
       property: record.property || '',
-      billing_period: record.billing_period || formRef.current.billing_period || '',
+      due_period: record.due_period || formRef.current.due_period || '',
       unit_owner: record.unit_owner || '',
       classification: record.classification || '',
       deposit: record.deposit || '',
@@ -1025,7 +1110,7 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
           property_list_id: Number(nextForm.property_list_id || 0),
           dd: nextForm.dd || '',
           property: nextForm.property || '',
-          billing_period: nextForm.billing_period || '',
+          due_period: nextForm.due_period || '',
           comboSearch: nextLabel
         })
       );
@@ -1040,6 +1125,8 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
       setSaving(false);
     }
   }
+
+  saveBillRef.current = saveBill;
 
   const visibleBillRows = useMemo(
     () => billRows.filter((row) => shouldIncludeBillRowForType(row, activeBillType)),
@@ -1140,6 +1227,8 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
     setBaselineSnapshot(clearedBaseline);
     setEditingBillId(null);
     setEditLock(INITIAL_EDIT_LOCK);
+    lastAutoLookupKeyRef.current = '';
+    autoLookupRequestRef.current = 0;
 
     window.sessionStorage.removeItem(editDraftKey);
     window.sessionStorage.removeItem(billSelectionKey);
@@ -1160,7 +1249,7 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
       property_list_id: Number(currentForm.property_list_id || 0),
       dd: currentForm.dd || '',
       property: currentForm.property || '',
-      billing_period: currentForm.billing_period || '',
+      due_period: currentForm.due_period || '',
       comboSearch: currentComboSearch
     };
     window.sessionStorage.setItem(billSelectionKey, JSON.stringify(payload));
@@ -1197,15 +1286,14 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
         return;
       }
       event.preventDefault();
-      void saveBill();
+      void saveBillRef.current();
     }
 
     window.addEventListener('keydown', handleShortcut);
     return () => {
       window.removeEventListener('keydown', handleShortcut);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [panelMode, saving, uploading, editingBillId, activeBillType]);
+  }, [panelMode, saving, uploading]);
 
   function handleComboInputChange(event) {
     const nextSearch = event.target.value;
@@ -1225,7 +1313,7 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
         property_list_id: 0,
         dd: '',
         property: '',
-        billing_period: '',
+        due_period: '',
         unit_owner: '',
         classification: '',
         deposit: '',
@@ -1255,6 +1343,12 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
   }
 
   async function handleModuleUpload(event) {
+    if (!ocrUploadHealthy) {
+      showToast('warning', ocrUploadHealthMessage || 'OCR service is unavailable right now.');
+      event.target.value = '';
+      return;
+    }
+
     const files = Array.from(event.target.files || []);
     if (files.length === 0) {
       return;
@@ -1266,6 +1360,8 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
     }
 
     setUploading(true);
+    // Allow the same account + due-period to be looked up again after repeated uploads.
+    lastAutoLookupKeyRef.current = '';
 
     try {
       const result = await uploadBill(file, {
@@ -1273,7 +1369,7 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
         property_list_id: Number(formRef.current.property_list_id || 0),
         dd: formRef.current.dd || '',
         property: formRef.current.property || '',
-        billing_period: formRef.current.billing_period || ''
+        due_period: formRef.current.due_period || ''
       });
 
       const normalized = normalizeUploadData(result) || {};
@@ -1281,9 +1377,8 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
         normalized.bill_type || detectBillTypeFromData(normalized) || ''
       );
       const isDetectedTypeMismatch = detectedBillType !== '' && detectedBillType !== activeBillType;
-      const activeTypeValidation = validateUploadExtraction(normalized, activeBillType);
 
-      if (isDetectedTypeMismatch && !activeTypeValidation.valid) {
+      if (isDetectedTypeMismatch) {
         const detectedLabel = getBillTypeUploadLabel(detectedBillType);
         const expectedLabel = getBillTypeUploadLabel(activeBillType);
         setUploadMismatchDialog({
@@ -1317,6 +1412,25 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
         }
       });
 
+      const nextPropertyListId = Number(nextForm.property_list_id || 0);
+      if (nextPropertyListId > 0) {
+        const canonicalRecord = propertyRecords.find(
+          (record) => Number(record.property_list_id || record.id || 0) === nextPropertyListId
+        );
+        if (canonicalRecord) {
+          nextForm.dd = canonicalRecord.dd || nextForm.dd || '';
+          nextForm.property = canonicalRecord.property || nextForm.property || '';
+          nextForm.unit_owner = canonicalRecord.unit_owner || nextForm.unit_owner || '';
+          nextForm.classification = canonicalRecord.classification || nextForm.classification || '';
+          nextForm.deposit = canonicalRecord.deposit || nextForm.deposit || '';
+          nextForm.rent = canonicalRecord.rent || nextForm.rent || '';
+          nextForm.per_property_status = canonicalRecord.per_property_status || nextForm.per_property_status || '';
+          nextForm.real_property_tax = canonicalRecord.real_property_tax || nextForm.real_property_tax || '';
+          nextForm.rpt_payment_status = canonicalRecord.rpt_payment_status || nextForm.rpt_payment_status || '';
+          nextForm.penalty = canonicalRecord.penalty || nextForm.penalty || '';
+        }
+      }
+
       (BILL_TYPE_RECORD_FIELDS[activeBillType] || []).forEach((field) => {
         const value = normalized[field];
         if (value === undefined || value === null) {
@@ -1325,6 +1439,14 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
         if (cleanTextValue(value) !== '') {
           nextForm[field] = value;
         }
+      });
+
+      await resolveUploadPropertyBeforeRender({
+        nextForm,
+        activeBillType,
+        accountLookupFieldByType: ACCOUNT_LOOKUP_FIELD_BY_BILL_TYPE,
+        lookupPropertyByAccountNumber,
+        propertyRecords
       });
 
       formRef.current = nextForm;
@@ -1341,16 +1463,7 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
       if (!validation.valid) {
         showToast('warning', validation.message || 'Upload complete. Review extracted fields before saving.');
       } else {
-        if (isDetectedTypeMismatch) {
-          const detectedLabel = getBillTypeUploadLabel(detectedBillType);
-          const expectedLabel = getBillTypeUploadLabel(activeBillType);
-          showToast(
-            'warning',
-            `Detected ${detectedLabel} invoice format, but ${expectedLabel} fields were found and filled.`
-          );
-        } else {
-          showToast('success', `Uploaded ${file.name} and filled bill fields.`);
-        }
+        showToast('success', `Uploaded ${file.name} and filled bill fields.`);
       }
 
       setIsUploadModalOpen(false);
@@ -1375,7 +1488,7 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
       return;
     }
 
-    const lookupKey = `${activeBillType}|${normalizedAccount}|${String(form.billing_period || '').trim()}`;
+    const lookupKey = `${activeBillType}|${normalizedAccount}|${String(form.due_period || '').trim()}`;
     if (lastAutoLookupKeyRef.current === lookupKey) {
       return;
     }
@@ -1390,7 +1503,7 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
           result = await lookupPropertyByAccountNumber({
             accountNumber: lookupAccountValue,
             utilityType: activeBillType,
-            billingPeriod: form.billing_period || ''
+            duePeriod: form.due_period || ''
           });
         } catch (primaryError) {
           const primaryMessage = String(primaryError?.message || '').toLowerCase();
@@ -1401,7 +1514,7 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
           // Fallback: search across all utility mappings for this account number.
           result = await lookupPropertyByAccountNumber({
             accountNumber: lookupAccountValue,
-            billingPeriod: form.billing_period || ''
+            duePeriod: form.due_period || ''
           });
         }
 
@@ -1428,11 +1541,7 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
         const shouldApplyById = matchedPropertyId > 0 && matchedPropertyId !== currentPropertyId;
         const shouldApplyByName = matchedPropertyName !== '' && matchedPropertyName !== currentPropertyName;
         if (shouldApplyById || shouldApplyByName) {
-          const applied = applyResolvedPropertyMatch(matched);
-          if (applied) {
-            const propertyLabel = matched.property || matched.property_name || 'the matched property';
-            showToast('info', `Account match found. Property auto-selected: ${propertyLabel}.`);
-          }
+          applyResolvedPropertyMatch(matched);
         }
       } catch (error) {
         const message = String(error?.message || '');
@@ -1450,7 +1559,7 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
   }, [
     activeBillType,
     applyResolvedPropertyMatch,
-    form.billing_period,
+    form.due_period,
     isEditMode,
     lookupAccountField,
     lookupAccountValue,
@@ -1515,13 +1624,21 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
         onClearFields={handleClearFields}
         saving={saving}
         uploading={uploading}
+        ocrUploadHealthy={ocrUploadHealthy}
+        ocrUploadMessage={ocrUploadHealthMessage}
         prevFlowPath={prevFlowPath}
         isLastFlowStep={isLastFlowStep}
         nextFlowPath={nextFlowPath}
         onNavigatePrev={() => handleBillFlowNavigation(prevFlowPath)}
         onNavigateNext={() => handleBillFlowNavigation(nextFlowPath)}
         onNavigateBack={() => handleBillFlowNavigation(finalStepBackPath, { skipUnsavedPrompt: true })}
-        onOpenUpload={() => setIsUploadModalOpen(true)}
+        onOpenUpload={() => {
+          if (!ocrUploadHealthy) {
+            showToast('warning', ocrUploadHealthMessage || 'OCR service is unavailable right now.');
+            return;
+          }
+          setIsUploadModalOpen(true);
+        }}
         nextButtonLabel="Back to Property Records"
       />
       <UploadModal
@@ -1550,3 +1667,4 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
     </AppLayout>
   );
 }
+

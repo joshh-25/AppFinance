@@ -16,6 +16,7 @@ Finance/
 ├─ frontend/                 # React + Vite app
 │  ├─ src/
 │  └─ public/
+├─ Examples/                 # Centralized examples/samples/templates (non-runtime)
 ├─ docs/                     # Architecture/product/operations/runbooks/wireframes
 ├─ infra/                    # CI, env docs, ops scripts
 ├─ tests/e2e/                # Reserved for cross-app e2e tests
@@ -25,6 +26,9 @@ Finance/
 ├─ logout.php                # Root compatibility shim -> backend/public/logout.php
 └─ db.php                    # Root compatibility shim -> backend/db.php
 ```
+
+Examples index:
+- See `Examples/EXAMPLES_INDEX.md` for sample files, templates, and OCR validation assets.
 
 ## Run
 
@@ -44,3 +48,5 @@ cd frontend
 npm install
 npm run build
 ```
+
+

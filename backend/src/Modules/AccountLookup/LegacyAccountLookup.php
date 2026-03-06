@@ -164,7 +164,7 @@ function map_account_lookup_row_for_response($row)
         $mapped['property_list_id'] = (int) ($row['pl_id'] ?? 0);
         $mapped['dd'] = (string) ($row['pl_dd'] ?? '');
         $mapped['property'] = (string) ($row['pl_property'] ?? '');
-        $mapped['billing_period'] = (string) ($row['pl_billing_period'] ?? '');
+        $mapped['due_period'] = (string) ($row['pl_billing_period'] ?? '');
         $mapped['unit_owner'] = (string) ($row['pl_unit_owner'] ?? '');
         $mapped['classification'] = (string) ($row['pl_classification'] ?? '');
         $mapped['deposit'] = (string) ($row['pl_deposit'] ?? '');
@@ -177,7 +177,7 @@ function map_account_lookup_row_for_response($row)
         $mapped['property_list_id'] = isset($row['property_list_id']) ? (int) ($row['property_list_id'] ?? 0) : 0;
         $mapped['dd'] = (string) ($row['dd'] ?? '');
         $mapped['property'] = (string) ($row['property'] ?? $mapped['property_name']);
-        $mapped['billing_period'] = (string) ($row['billing_period'] ?? '');
+        $mapped['due_period'] = (string) ($row['billing_period'] ?? '');
         $mapped['unit_owner'] = (string) ($row['unit_owner'] ?? '');
         $mapped['classification'] = (string) ($row['classification'] ?? '');
         $mapped['deposit'] = (string) ($row['deposit'] ?? '');
@@ -290,7 +290,7 @@ function build_account_lookup_needs_review_payload($accountNumber, $normalizedAc
             'account_number_raw' => normalize_account_lookup_text($accountNumber),
             'account_number_normalized' => (string) $normalizedAccount,
             'utility_type' => (string) $utilityType,
-            'billing_period' => (string) $billingMonth,
+            'due_period' => (string) $billingMonth,
             'candidate_count' => (int) ($resolution['candidate_count'] ?? 0),
             'candidates' => array_values($resolution['candidates'] ?? []),
         ],
@@ -506,7 +506,9 @@ function handle_account_lookup_actions($action)
     if ($action === 'account_lookup_search') {
         $accountNumber = query_string_param('account_number', '');
         $utilityType = normalize_account_lookup_utility_type(query_string_param('utility_type', ''));
-        $billingMonth = normalize_account_lookup_billing_month(query_string_param('billing_period', ''));
+        $billingMonth = normalize_account_lookup_billing_month(
+            query_string_param('due_period', query_string_param('billing_period', ''))
+        );
         $normalizedAccount = normalize_account_lookup_account_number($accountNumber);
 
         if ($normalizedAccount === '') {
@@ -588,6 +590,7 @@ function handle_account_lookup_actions($action)
                 }
 
                 $fallbackMatch = $fallbackResolution['candidate'] ?? $fallbackMatches[0];
+                $fallbackPropertyListId = (int) ($fallbackMatch['property_list_id'] ?? 0);
                 $fallbackRow = [
                     'id' => 0,
                     'account_number_raw' => (string) ($fallbackMatch['account_number_raw'] ?? ''),
@@ -597,14 +600,20 @@ function handle_account_lookup_actions($action)
                     'billing_month' => $billingMonth,
                     'source_file' => 'property_account_directory',
                     'sheet_name' => '',
-                    'property_list_id' => null,
+                    'property_list_id' => $fallbackPropertyListId > 0 ? $fallbackPropertyListId : null,
                 ];
 
-                $resolved = find_property_record_for_account_lookup(
-                    $pdo,
-                    $fallbackRow['property_name'],
-                    $billingMonth
-                );
+                $resolved = null;
+                if ($fallbackPropertyListId > 0) {
+                    $resolved = find_property_list_by_id($pdo, $fallbackPropertyListId);
+                }
+                if (!$resolved) {
+                    $resolved = find_property_record_for_account_lookup(
+                        $pdo,
+                        $fallbackRow['property_name'],
+                        $billingMonth
+                    );
+                }
                 if ($resolved) {
                     $fallbackRow['pl_id'] = $resolved['id'] ?? null;
                     $fallbackRow['pl_dd'] = $resolved['dd'] ?? '';
@@ -645,6 +654,29 @@ function handle_account_lookup_actions($action)
             }
 
             $best = $rows[0];
+            if ((int) ($best['pl_id'] ?? 0) <= 0) {
+                $directoryMatch = find_property_from_property_account_directory($pdo, $normalizedAccount, $utilityType);
+                $directoryPropertyListId = (int) ($directoryMatch['property_list_id'] ?? 0);
+                if ($directoryPropertyListId > 0) {
+                    $resolvedFromDirectory = find_property_list_by_id($pdo, $directoryPropertyListId);
+                    if ($resolvedFromDirectory) {
+                        $best['property_list_id'] = $directoryPropertyListId;
+                        $best['pl_id'] = $resolvedFromDirectory['id'] ?? null;
+                        $best['pl_dd'] = $resolvedFromDirectory['dd'] ?? '';
+                        $best['pl_property'] = $resolvedFromDirectory['property'] ?? '';
+                        $best['pl_billing_period'] = $resolvedFromDirectory['billing_period'] ?? '';
+                        $best['pl_unit_owner'] = $resolvedFromDirectory['unit_owner'] ?? '';
+                        $best['pl_classification'] = $resolvedFromDirectory['classification'] ?? '';
+                        $best['pl_deposit'] = $resolvedFromDirectory['deposit'] ?? '';
+                        $best['pl_rent'] = $resolvedFromDirectory['rent'] ?? '';
+                        $best['pl_per_property_status'] = $resolvedFromDirectory['per_property_status'] ?? '';
+                        $best['pl_real_property_tax'] = $resolvedFromDirectory['real_property_tax'] ?? '';
+                        $best['pl_rpt_payment_status'] = $resolvedFromDirectory['rpt_payment_status'] ?? '';
+                        $best['pl_penalty'] = $resolvedFromDirectory['penalty'] ?? '';
+                        $best['property_name'] = (string) ($resolvedFromDirectory['property'] ?? $best['property_name'] ?? '');
+                    }
+                }
+            }
             if ((int) ($best['pl_id'] ?? 0) <= 0) {
                 $resolved = find_property_record_for_account_lookup($pdo, $best['property_name'] ?? '', $billingMonth);
                 if ($resolved) {

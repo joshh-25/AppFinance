@@ -190,12 +190,12 @@ export default function ExpensesPage() {
       });
 
       if (autoFilledCount > 0) {
-        showToast('success', `OCR complete. Auto-filled ${autoFilledCount} field(s).`);
+        showToast('success', `Upload complete. Auto-filled ${autoFilledCount} field(s).`);
       } else {
-        showToast('warning', 'OCR complete, but no fields were confidently auto-filled. You can enter values manually.');
+        showToast('warning', 'Upload complete, but no fields were confidently auto-filled. You can enter values manually.');
       }
     } catch (error) {
-      showToast('error', String(error?.message || 'OCR processing failed.'));
+      showToast('error', String(error?.message || 'Upload processing failed.'));
     } finally {
       setOcrBusy(false);
     }
@@ -224,7 +224,7 @@ export default function ExpensesPage() {
               onClick={handleOcrButtonClick}
               disabled={saving || ocrBusy}
             >
-              {ocrBusy ? 'Processing OCR...' : 'OCR'}
+              {ocrBusy ? 'Uploading...' : 'Upload'}
             </button>
             <input
               ref={ocrInputRef}

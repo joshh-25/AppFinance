@@ -14,11 +14,11 @@ function hydrate_bill_row_from_property_master($row)
     if ($propertyListId > 0) {
         $row['dd'] = trim((string) ($row['pl_dd'] ?? '')) !== '' ? $row['pl_dd'] : ($row['dd'] ?? '');
         $row['property'] = trim((string) ($row['pl_property'] ?? '')) !== '' ? $row['pl_property'] : ($row['property'] ?? '');
-        // Billing period must come from the bill row so the same property can have
+        // Due Period must come from the bill row so the same property can have
         // separate monthly records (e.g., 2026-02 and 2026-03).
-        $row['billing_period'] = trim((string) ($row['billing_period'] ?? '')) !== ''
-            ? $row['billing_period']
-            : ($row['pl_billing_period'] ?? '');
+        $row['due_period'] = trim((string) ($row['due_period'] ?? '')) !== ''
+            ? $row['due_period']
+            : ($row['pl_due_period'] ?? '');
         $row['unit_owner'] = trim((string) ($row['pl_unit_owner'] ?? '')) !== '' ? $row['pl_unit_owner'] : ($row['unit_owner'] ?? '');
         $row['classification'] = trim((string) ($row['pl_classification'] ?? '')) !== '' ? $row['pl_classification'] : ($row['classification'] ?? '');
         $row['deposit'] = trim((string) ($row['pl_deposit'] ?? '')) !== '' ? $row['pl_deposit'] : ($row['deposit'] ?? '');
@@ -40,7 +40,7 @@ function hydrate_bill_row_from_property_master($row)
     unset(
         $row['pl_dd'],
         $row['pl_property'],
-        $row['pl_billing_period'],
+        $row['pl_due_period'],
         $row['pl_unit_owner'],
         $row['pl_classification'],
         $row['pl_deposit'],
@@ -64,6 +64,85 @@ function normalize_bill_type_filter($value)
     }
 
     return in_array($normalized, API_BILL_TYPES, true) ? $normalized : '';
+}
+
+function normalize_upload_account_for_lookup($value)
+{
+    $raw = strtolower(trim((string) $value));
+    if ($raw === '') {
+        return '';
+    }
+    return preg_replace('/[^a-z0-9]/', '', $raw);
+}
+
+function canonicalize_upload_property_from_master(array $payload, $requestedBillType = '')
+{
+    $next = $payload;
+
+    try {
+        $pdo = get_db_connection();
+        ensure_property_master_columns($pdo);
+
+        $propertyListId = normalize_positive_int($next['property_list_id'] ?? 0);
+        $effectiveBillType = normalize_bill_type_filter($next['bill_type'] ?? $requestedBillType);
+
+        if ($propertyListId <= 0 && function_exists('find_property_from_property_account_directory')) {
+            $accountFieldByType = [
+                'internet' => 'internet_account_no',
+                'water' => 'water_account_no',
+                'electricity' => 'electricity_account_no',
+            ];
+
+            $candidateTypes = [];
+            if ($effectiveBillType !== '' && isset($accountFieldByType[$effectiveBillType])) {
+                $candidateTypes[] = $effectiveBillType;
+            }
+            foreach (['electricity', 'water', 'internet'] as $candidateType) {
+                if (!in_array($candidateType, $candidateTypes, true)) {
+                    $candidateTypes[] = $candidateType;
+                }
+            }
+
+            foreach ($candidateTypes as $candidateType) {
+                $accountField = $accountFieldByType[$candidateType] ?? '';
+                if ($accountField === '') {
+                    continue;
+                }
+                $normalizedAccount = normalize_upload_account_for_lookup($next[$accountField] ?? '');
+                if ($normalizedAccount === '') {
+                    continue;
+                }
+
+                $matched = find_property_from_property_account_directory($pdo, $normalizedAccount, $candidateType);
+                $matchedPropertyListId = normalize_positive_int($matched['property_list_id'] ?? 0);
+                if ($matchedPropertyListId > 0) {
+                    $propertyListId = $matchedPropertyListId;
+                    break;
+                }
+            }
+        }
+
+        if ($propertyListId > 0) {
+            $master = find_property_list_by_id($pdo, $propertyListId);
+            if (is_array($master) && !empty($master)) {
+                $next['property_list_id'] = (int) ($master['id'] ?? $propertyListId);
+                $next['dd'] = (string) ($master['dd'] ?? ($next['dd'] ?? ''));
+                $next['property'] = (string) ($master['property'] ?? ($next['property'] ?? ''));
+                $next['unit_owner'] = (string) ($master['unit_owner'] ?? ($next['unit_owner'] ?? ''));
+                $next['classification'] = (string) ($master['classification'] ?? ($next['classification'] ?? ''));
+                $next['deposit'] = (string) ($master['deposit'] ?? ($next['deposit'] ?? ''));
+                $next['rent'] = (string) ($master['rent'] ?? ($next['rent'] ?? ''));
+                $next['per_property_status'] = (string) ($master['per_property_status'] ?? ($next['per_property_status'] ?? ''));
+                $next['real_property_tax'] = (string) ($master['real_property_tax'] ?? ($next['real_property_tax'] ?? ''));
+                $next['rpt_payment_status'] = (string) ($master['rpt_payment_status'] ?? ($next['rpt_payment_status'] ?? ''));
+                $next['penalty'] = (string) ($master['penalty'] ?? ($next['penalty'] ?? ''));
+            }
+        }
+    } catch (Throwable $error) {
+        return $payload;
+    }
+
+    return $next;
 }
 
 function is_valid_bill_json_payload($data)
@@ -162,6 +241,70 @@ function log_bill_upload_error($requestId, $event, $context = [])
     error_log(implode(' ', $parts));
 }
 
+function should_retry_upload_http_status($statusCode)
+{
+    $status = (int) $statusCode;
+    return $status === 408 || $status === 429 || ($status >= 500 && $status <= 599);
+}
+
+function execute_n8n_upload_request_with_retry($n8nWebhookUrl, $postData, $maxAttempts = 2)
+{
+    $attempts = max(1, (int) $maxAttempts);
+    $last = [
+        'response' => false,
+        'status' => 0,
+        'error' => 'Unknown upload error.',
+        'attempts' => 0,
+    ];
+
+    for ($attempt = 1; $attempt <= $attempts; $attempt++) {
+        $ch = curl_init($n8nWebhookUrl);
+        if ($ch === false) {
+            $last = [
+                'response' => false,
+                'status' => 0,
+                'error' => 'Failed to initialize cURL.',
+                'attempts' => $attempt,
+            ];
+            continue;
+        }
+
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Accept: application/json']);
+
+        $response = curl_exec($ch);
+        $httpStatus = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = trim((string) curl_error($ch));
+        curl_close($ch);
+
+        $last = [
+            'response' => $response,
+            'status' => $httpStatus,
+            'error' => $curlError,
+            'attempts' => $attempt,
+        ];
+
+        if ($response !== false && ($httpStatus >= 200 && $httpStatus < 300)) {
+            return $last;
+        }
+
+        $isNetworkFailure = ($response === false);
+        $retryableHttp = should_retry_upload_http_status($httpStatus);
+        if ($attempt < $attempts && ($isNetworkFailure || $retryableHttp)) {
+            usleep(250000); // 250ms backoff
+            continue;
+        }
+
+        break;
+    }
+
+    return $last;
+}
+
 function build_bill_list_filters()
 {
     $whereParts = ['b.`is_hidden` = 0'];
@@ -182,7 +325,7 @@ function build_bill_list_filters()
         $searchColumns = [
             "COALESCE(pl.`dd`, b.`dd`, '')",
             "COALESCE(pl.`property`, b.`property`, '')",
-            "COALESCE(pl.`billing_period`, '')",
+            "COALESCE(b.`due_period`, '')",
             "COALESCE(pl.`unit_owner`, b.`unit_owner`, '')",
             "COALESCE(pl.`classification`, b.`classification`, '')",
             "COALESCE(pl.`deposit`, b.`deposit`, '')",
@@ -261,7 +404,7 @@ function find_active_bill_row_by_property_period($pdo, $propertyListId, $billing
     $stmt = $pdo->prepare(
         "SELECT * FROM `property_billing_records`
          WHERE `property_list_id` = ?
-           AND TRIM(COALESCE(`billing_period`, '')) = TRIM(?)
+           AND TRIM(COALESCE(`due_period`, '')) = TRIM(?)
            AND `is_hidden` = 0
          ORDER BY `id` DESC
          LIMIT 1"
@@ -288,7 +431,7 @@ function update_bill_row_shared_and_module_fields($pdo, $rowId, $normalized, $bi
         "`property_list_id` = ?",
         "`dd` = ?",
         "`property` = ?",
-        "`billing_period` = ?",
+        "`due_period` = ?",
         "`unit_owner` = ?",
         "`bill_type` = ?",
         "`is_hidden` = 0",
@@ -304,7 +447,7 @@ function update_bill_row_shared_and_module_fields($pdo, $rowId, $normalized, $bi
         (int) ($normalized['property_list_id'] ?? 0),
         (string) ($normalized['dd'] ?? ''),
         (string) ($normalized['property'] ?? ''),
-        (string) ($normalized['billing_period'] ?? ''),
+        (string) ($normalized['due_period'] ?? ''),
         (string) ($normalized['unit_owner'] ?? ''),
         $safeType,
         (string) ($normalized['classification'] ?? ''),
@@ -349,7 +492,7 @@ function hide_duplicate_active_month_rows($pdo, $propertyListId, $billingPeriod,
          WHERE `is_hidden` = 0
            AND `id` <> ?
            AND `property_list_id` = ?
-           AND TRIM(COALESCE(`billing_period`, '')) = TRIM(?)"
+           AND TRIM(COALESCE(`due_period`, '')) = TRIM(?)"
     );
     $stmt->execute([$keep, $id, $period]);
     return (int) $stmt->rowCount();
@@ -358,6 +501,46 @@ function hide_duplicate_active_month_rows($pdo, $propertyListId, $billingPeriod,
 function handle_bill_actions($action)
 {
     $billTypes = API_BILL_TYPES;
+
+    if ($action === 'ocr_health') {
+        $n8nWebhookUrl = trim((string) get_app_config('N8N_WEBHOOK_URL', ''));
+        if ($n8nWebhookUrl === '') {
+            echo json_encode([
+                'success' => false,
+                'healthy' => false,
+                'message' => 'N8N_WEBHOOK_URL is not configured.',
+            ]);
+            return true;
+        }
+
+        $curl = curl_init($n8nWebhookUrl);
+        if ($curl === false) {
+            echo json_encode([
+                'success' => false,
+                'healthy' => false,
+                'message' => 'Unable to initialize webhook health probe.',
+            ]);
+            return true;
+        }
+        curl_setopt($curl, CURLOPT_NOBODY, true);
+        curl_setopt($curl, CURLOPT_CUSTOMREQUEST, 'GET');
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 3);
+        curl_setopt($curl, CURLOPT_TIMEOUT, 5);
+        curl_exec($curl);
+        $status = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        $err = trim((string) curl_error($curl));
+        curl_close($curl);
+
+        $healthy = $status > 0 || $err === '';
+        echo json_encode([
+            'success' => true,
+            'healthy' => $healthy,
+            'status_code' => $status,
+            'message' => $healthy ? 'OCR service is reachable.' : ('OCR health probe failed: ' . ($err !== '' ? $err : 'no response')),
+        ]);
+        return true;
+    }
 
     if ($action === 'add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $input = file_get_contents('php://input');
@@ -378,8 +561,8 @@ function handle_bill_actions($action)
         if (!in_array($normalized['bill_type'], $billTypes, true)) {
             $normalized['bill_type'] = 'water';
         }
-        if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', (string) ($normalized['billing_period'] ?? ''))) {
-            echo json_encode(['success' => false, 'message' => 'Billing Period is required (YYYY-MM).']);
+        if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', (string) ($normalized['due_period'] ?? ''))) {
+            echo json_encode(['success' => false, 'message' => 'Due Period is required (YYYY-MM).']);
             return true;
         }
 
@@ -389,6 +572,7 @@ function handle_bill_actions($action)
             ensure_billing_visibility_column($pdo);
             ensure_billing_property_list_column($pdo);
             ensure_property_master_columns($pdo);
+            ensure_billing_due_period_column($pdo);
             $pdo->beginTransaction();
             $normalized = resolve_bill_property_master($pdo, $normalized, true);
 
@@ -403,7 +587,7 @@ function handle_bill_actions($action)
             $existingRow = find_active_bill_row_by_property_period(
                 $pdo,
                 (int) ($normalized['property_list_id'] ?? 0),
-                (string) ($normalized['billing_period'] ?? '')
+                (string) ($normalized['due_period'] ?? '')
             );
 
             if ($existingRow && isset($existingRow['id'])) {
@@ -417,7 +601,7 @@ function handle_bill_actions($action)
             } else {
                 $stmt = $pdo->prepare(
                     "INSERT INTO `property_billing_records` (
-                        `property_list_id`, `dd`, `property`, `billing_period`, `unit_owner`, `bill_type`, `is_hidden`, `classification`, `deposit`, `rent`, `internet_provider`, `internet_account_no`,
+                        `property_list_id`, `dd`, `property`, `due_period`, `unit_owner`, `bill_type`, `is_hidden`, `classification`, `deposit`, `rent`, `internet_provider`, `internet_account_no`,
                         `wifi_amount`, `wifi_due_date`, `wifi_payment_status`, `water_account_no`, `water_amount`, `water_due_date`,
                         `water_payment_status`, `electricity_account_no`, `electricity_amount`, `electricity_due_date`,
                         `electricity_payment_status`, `association_dues`, `association_due_date`, `association_payment_status`,
@@ -431,7 +615,7 @@ function handle_bill_actions($action)
                     $normalized['property_list_id'],
                     $normalized['dd'],
                     $normalized['property'],
-                    $normalized['billing_period'],
+                    $normalized['due_period'],
                     $normalized['unit_owner'],
                     $normalized['bill_type'],
                     0,
@@ -466,7 +650,7 @@ function handle_bill_actions($action)
             hide_duplicate_active_month_rows(
                 $pdo,
                 (int) ($normalized['property_list_id'] ?? 0),
-                (string) ($normalized['billing_period'] ?? ''),
+                (string) ($normalized['due_period'] ?? ''),
                 $insertedId
             );
             $pdo->commit();
@@ -512,8 +696,8 @@ function handle_bill_actions($action)
         if (!in_array($normalized['bill_type'], $billTypes, true)) {
             $normalized['bill_type'] = 'water';
         }
-        if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', (string) ($normalized['billing_period'] ?? ''))) {
-            echo json_encode(['success' => false, 'message' => 'Billing Period is required (YYYY-MM).']);
+        if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', (string) ($normalized['due_period'] ?? ''))) {
+            echo json_encode(['success' => false, 'message' => 'Due Period is required (YYYY-MM).']);
             return true;
         }
 
@@ -523,6 +707,7 @@ function handle_bill_actions($action)
             ensure_billing_visibility_column($pdo);
             ensure_billing_property_list_column($pdo);
             ensure_property_master_columns($pdo);
+            ensure_billing_due_period_column($pdo);
             $pdo->beginTransaction();
 
             $selectStmt = $pdo->prepare(
@@ -562,7 +747,7 @@ function handle_bill_actions($action)
             hide_duplicate_active_month_rows(
                 $pdo,
                 (int) ($normalized['property_list_id'] ?? 0),
-                (string) ($normalized['billing_period'] ?? ''),
+                (string) ($normalized['due_period'] ?? ''),
                 $id
             );
 
@@ -674,7 +859,7 @@ function handle_bill_actions($action)
         $requestedPropertyListId = normalize_positive_int($_POST['property_list_id'] ?? 0);
         $requestedDd = trim((string) ($_POST['dd'] ?? ''));
         $requestedProperty = trim((string) ($_POST['property'] ?? ''));
-        $requestedBillingPeriod = trim((string) ($_POST['billing_period'] ?? ''));
+        $requestedBillingPeriod = trim((string) ($_POST['due_period'] ?? ''));
 
         $useMockUpload = parse_boolean_config((string) get_app_config('N8N_USE_MOCK', 'false'), false);
         if ($useMockUpload) {
@@ -714,35 +899,19 @@ function handle_bill_actions($action)
             'property_list_id' => $requestedPropertyListId,
             'dd' => $requestedDd,
             'property' => $requestedProperty,
-            'billing_period' => $requestedBillingPeriod,
+            'due_period' => $requestedBillingPeriod,
         ];
 
-        $ch = curl_init($n8n_webhook_url);
-        if ($ch === false) {
-            log_bill_upload_error($uploadRequestId, 'curl_init_failed');
-            http_response_code(500);
-            echo json_encode([
-                'success' => false,
-                'message' => 'Failed to initialize upload handler.',
-                'request_id' => $uploadRequestId,
-            ]);
-            return true;
-        }
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Accept: application/json']);
-
-        $response = curl_exec($ch);
-        $http_status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curl_error = curl_error($ch);
-        curl_close($ch);
+        $uploadResult = execute_n8n_upload_request_with_retry($n8n_webhook_url, $data, 2);
+        $response = $uploadResult['response'];
+        $http_status = (int) ($uploadResult['status'] ?? 0);
+        $curl_error = (string) ($uploadResult['error'] ?? '');
+        $attempts = (int) ($uploadResult['attempts'] ?? 1);
 
         if ($response === false) {
             log_bill_upload_error($uploadRequestId, 'network_error', [
                 'details' => $curl_error,
+                'attempts' => (string) $attempts,
             ]);
             http_response_code(502);
             echo json_encode([
@@ -759,6 +928,7 @@ function handle_bill_actions($action)
             log_bill_upload_error($uploadRequestId, 'non_2xx', [
                 'status' => (string) $http_status,
                 'summary' => $responseDetail,
+                'attempts' => (string) $attempts,
             ]);
             http_response_code(502);
             echo json_encode([
@@ -791,9 +961,10 @@ function handle_bill_actions($action)
                 if ($requestedPropertyListId > 0 && (!isset($n8n_data['data']['property_list_id']) || (int) $n8n_data['data']['property_list_id'] <= 0)) {
                     $n8n_data['data']['property_list_id'] = $requestedPropertyListId;
                 }
-                if ($requestedBillingPeriod !== '' && (!isset($n8n_data['data']['billing_period']) || trim((string) $n8n_data['data']['billing_period']) === '')) {
-                    $n8n_data['data']['billing_period'] = $requestedBillingPeriod;
+                if ($requestedBillingPeriod !== '' && (!isset($n8n_data['data']['due_period']) || trim((string) $n8n_data['data']['due_period']) === '')) {
+                    $n8n_data['data']['due_period'] = $requestedBillingPeriod;
                 }
+                $n8n_data['data'] = canonicalize_upload_property_from_master($n8n_data['data'], $requestedBillType);
                 echo json_encode($n8n_data);
                 return true;
             }
@@ -813,18 +984,55 @@ function handle_bill_actions($action)
             if ($requestedPropertyListId > 0 && (!isset($n8n_data['property_list_id']) || (int) $n8n_data['property_list_id'] <= 0)) {
                 $n8n_data['property_list_id'] = $requestedPropertyListId;
             }
-            if ($requestedBillingPeriod !== '' && (!isset($n8n_data['billing_period']) || trim((string) $n8n_data['billing_period']) === '')) {
-                $n8n_data['billing_period'] = $requestedBillingPeriod;
+            if ($requestedBillingPeriod !== '' && (!isset($n8n_data['due_period']) || trim((string) $n8n_data['due_period']) === '')) {
+                $n8n_data['due_period'] = $requestedBillingPeriod;
             }
+            $n8n_data = canonicalize_upload_property_from_master($n8n_data, $requestedBillType);
             echo json_encode(['success' => true, 'data' => $n8n_data]);
             return true;
         }
 
-        // Treat empty or HTML 200 responses as upstream errors instead of successful scans.
-        if ($trimmedResponse === '' || preg_match('/^\s*(?:<!doctype\s+html|<html\b)/i', $trimmedResponse)) {
+        // Some webhook setups return 200 with an empty/non-JSON body.
+        // Default behavior is strict error to avoid silent "needs_review" confusion.
+        if ($trimmedResponse === '') {
+            $allowEmptyResponseFallback = parse_boolean_config((string) get_app_config('N8N_ALLOW_EMPTY_RESPONSE', 'false'), false);
+            if (!$allowEmptyResponseFallback) {
+                log_bill_upload_error($uploadRequestId, 'invalid_response_format', [
+                    'status' => (string) $http_status,
+                    'summary' => 'empty response body',
+                ]);
+                http_response_code(502);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Document processing service returned an empty response.',
+                    'request_id' => $uploadRequestId,
+                ]);
+                return true;
+            }
+
+            log_bill_upload_error($uploadRequestId, 'empty_response_fallback', [
+                'status' => (string) $http_status,
+            ]);
+            echo json_encode([
+                'success' => true,
+                'message' => 'Upload completed, but OCR response was empty. Fill in or review extracted fields manually.',
+                'data' => [
+                    'bill_type' => $requestedBillType !== '' ? $requestedBillType : 'water',
+                    'property_list_id' => $requestedPropertyListId,
+                    'dd' => $requestedDd,
+                    'property' => $requestedProperty,
+                    'due_period' => $requestedBillingPeriod,
+                ],
+                'request_id' => $uploadRequestId,
+            ]);
+            return true;
+        }
+
+        // HTML body usually indicates proxy/web server error page; keep this as an upstream error.
+        if (preg_match('/^\s*(?:<!doctype\s+html|<html\b)/i', $trimmedResponse)) {
             log_bill_upload_error($uploadRequestId, 'invalid_response_format', [
                 'status' => (string) $http_status,
-                'summary' => $trimmedResponse === '' ? 'empty response body' : 'html response body',
+                'summary' => 'html response body',
             ]);
             http_response_code(502);
             echo json_encode([
@@ -845,6 +1053,7 @@ function handle_bill_actions($action)
             ensure_bill_type_column($pdo);
             ensure_billing_visibility_column($pdo);
             ensure_billing_property_list_column($pdo);
+            ensure_billing_due_period_column($pdo);
             ensure_property_master_columns($pdo);
             $filters = build_bill_list_filters();
             $pagination = read_pagination_from_query(25, 200);
@@ -864,7 +1073,7 @@ function handle_bill_actions($action)
                     b.*,
                     pl.`dd` AS `pl_dd`,
                     pl.`property` AS `pl_property`,
-                    pl.`billing_period` AS `pl_billing_period`,
+                    b.`due_period` AS `pl_due_period`,
                     pl.`unit_owner` AS `pl_unit_owner`,
                     pl.`classification` AS `pl_classification`,
                     pl.`deposit` AS `pl_deposit`,
@@ -906,12 +1115,13 @@ function handle_bill_actions($action)
             ensure_billing_visibility_column($pdo);
             ensure_billing_property_list_column($pdo);
             ensure_property_master_columns($pdo);
+            ensure_billing_due_period_column($pdo);
             $stmt = $pdo->query(
                 "SELECT
                     b.*,
                     pl.`dd` AS `pl_dd`,
                     pl.`property` AS `pl_property`,
-                    pl.`billing_period` AS `pl_billing_period`,
+                    b.`due_period` AS `pl_due_period`,
                     pl.`unit_owner` AS `pl_unit_owner`,
                     pl.`classification` AS `pl_classification`,
                     pl.`deposit` AS `pl_deposit`,
@@ -933,7 +1143,7 @@ function handle_bill_actions($action)
                 $propertyListId = normalize_positive_int($row['property_list_id'] ?? 0);
                 $dd = trim((string) ($row['dd'] ?? ''));
                 $property = trim((string) ($row['property'] ?? ''));
-                $billingPeriod = trim((string) ($row['billing_period'] ?? ''));
+                $billingPeriod = trim((string) ($row['due_period'] ?? ''));
                 $baseKey = $propertyListId > 0
                     ? 'pl#' . $propertyListId
                     : strtolower($dd) . '|' . ($property !== '' ? strtolower($property) : '__no_property__');
@@ -944,7 +1154,7 @@ function handle_bill_actions($action)
                         'property_list_id' => $propertyListId,
                         'dd' => $row['dd'] ?? '',
                         'property' => $row['property'] ?? '',
-                        'billing_period' => $billingPeriod,
+                        'due_period' => $billingPeriod,
                         'water_bill_id' => null,
                         'electricity_bill_id' => null,
                         'internet_bill_id' => null,
@@ -1002,8 +1212,8 @@ function handle_bill_actions($action)
                 if (($groups[$key]['per_property_status'] ?? '') === '' && ($row['per_property_status'] ?? '') !== '') {
                     $groups[$key]['per_property_status'] = $row['per_property_status'];
                 }
-                if (($groups[$key]['billing_period'] ?? '') === '' && $billingPeriod !== '') {
-                    $groups[$key]['billing_period'] = $billingPeriod;
+                if (($groups[$key]['due_period'] ?? '') === '' && $billingPeriod !== '') {
+                    $groups[$key]['due_period'] = $billingPeriod;
                 }
 
                 $billType = strtolower(trim((string) ($row['bill_type'] ?? 'water')));
@@ -1095,3 +1305,4 @@ function handle_bill_actions($action)
 
     return false;
 }
+

@@ -44,6 +44,11 @@ vi.mock('./features/records/ExpensesRecordsPage.jsx', () => ({
 import App from './app/App.jsx';
 import { checkSession } from './shared/lib/auth.js';
 
+const ROUTER_FUTURE_FLAGS = {
+  v7_startTransition: true,
+  v7_relativeSplatPath: true
+};
+
 function renderApp(initialPath) {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -55,7 +60,7 @@ function renderApp(initialPath) {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[initialPath]}>
+      <MemoryRouter initialEntries={[initialPath]} future={ROUTER_FUTURE_FLAGS}>
         <App />
       </MemoryRouter>
     </QueryClientProvider>

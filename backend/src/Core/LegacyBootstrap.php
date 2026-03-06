@@ -12,6 +12,13 @@ header('Permissions-Policy: camera=(self), microphone=(), geolocation=()');
 header('Cache-Control: no-store, no-cache, must-revalidate');
 header('Pragma: no-cache');
 if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
     session_start();
 }
 require_once __DIR__ . '/../../db.php';
@@ -234,6 +241,50 @@ function normalize_billing_period_value($value)
     return $raw;
 }
 
+function normalize_due_period_value($value)
+{
+    return normalize_billing_period_value($value);
+}
+
+function derive_due_period_from_due_date_fields($data, $billType = '')
+{
+    $normalizedType = strtolower(trim((string) $billType));
+    if ($normalizedType === 'wifi') {
+        $normalizedType = 'internet';
+    } elseif ($normalizedType === 'association') {
+        $normalizedType = 'association_dues';
+    }
+
+    $fieldByType = [
+        'internet' => 'wifi_due_date',
+        'water' => 'water_due_date',
+        'electricity' => 'electricity_due_date',
+        'association_dues' => 'association_due_date',
+    ];
+
+    $candidateFields = [];
+    if (isset($fieldByType[$normalizedType])) {
+        $candidateFields[] = $fieldByType[$normalizedType];
+    }
+    $candidateFields = array_merge($candidateFields, ['wifi_due_date', 'water_due_date', 'electricity_due_date', 'association_due_date']);
+
+    foreach ($candidateFields as $field) {
+        $raw = trim((string) ($data[$field] ?? ''));
+        if ($raw === '') {
+            continue;
+        }
+        if (preg_match('/^(\d{4})-(0[1-9]|1[0-2])-\d{2}$/', $raw, $m)) {
+            return $m[1] . '-' . $m[2];
+        }
+        $normalized = normalize_due_period_value($raw);
+        if ($normalized !== '') {
+            return $normalized;
+        }
+    }
+
+    return '';
+}
+
 function normalize_csv_payload($data)
 {
     $fields = [
@@ -241,7 +292,7 @@ function normalize_csv_payload($data)
         'property_list_id',
         'dd',
         'property',
-        'billing_period',
+        'due_period',
         'unit_owner',
         'classification',
         'deposit',
@@ -275,7 +326,12 @@ function normalize_csv_payload($data)
     }
 
     $normalized['property_list_id'] = normalize_positive_int($data['property_list_id'] ?? 0);
-    $normalized['billing_period'] = normalize_billing_period_value($data['billing_period'] ?? '');
+
+    $rawDuePeriod = trim((string) ($data['due_period'] ?? $data['billing_period'] ?? ''));
+    $normalized['due_period'] = normalize_due_period_value($rawDuePeriod);
+    if ($normalized['due_period'] === '') {
+        $normalized['due_period'] = derive_due_period_from_due_date_fields($data, $normalized['bill_type'] ?? '');
+    }
 
     if ($normalized['bill_type'] === '') {
         $normalized['bill_type'] = 'water';
@@ -538,6 +594,11 @@ function ensure_billing_property_list_column($pdo)
     require_billing_columns($pdo, ['property_list_id']);
 }
 
+function ensure_billing_due_period_column($pdo)
+{
+    require_billing_columns($pdo, ['due_period']);
+}
+
 function find_property_list_by_id($pdo, $propertyListId)
 {
     $id = normalize_positive_int($propertyListId);
@@ -730,31 +791,31 @@ function billing_identity_exists($pdo, $normalized, $excludeId = 0)
     ensure_bill_type_column($pdo);
     ensure_billing_visibility_column($pdo);
     ensure_billing_property_list_column($pdo);
-    require_billing_columns($pdo, ['billing_period']);
+    ensure_billing_due_period_column($pdo);
 
     $propertyListId = normalize_positive_int($normalized['property_list_id'] ?? 0);
     $billType = trim((string) ($normalized['bill_type'] ?? 'water'));
-    $billingPeriod = trim((string) ($normalized['billing_period'] ?? ''));
+    $duePeriod = trim((string) ($normalized['due_period'] ?? $normalized['billing_period'] ?? ''));
 
     if ($propertyListId > 0) {
         $sql = "SELECT `id` FROM `property_billing_records`
                 WHERE `property_list_id` = ?
                   AND LOWER(TRIM(COALESCE(`bill_type`, 'water'))) = LOWER(TRIM(?))
-                  AND TRIM(COALESCE(`billing_period`, '')) = TRIM(?)
+                  AND TRIM(COALESCE(`due_period`, '')) = TRIM(?)
                   AND `is_hidden` = 0";
-        $params = [$propertyListId, $billType, $billingPeriod];
+        $params = [$propertyListId, $billType, $duePeriod];
     } else {
         $sql = "SELECT `id` FROM `property_billing_records`
                 WHERE LOWER(TRIM(`dd`)) = LOWER(TRIM(?))
                   AND LOWER(TRIM(COALESCE(`property`, ''))) = LOWER(TRIM(?))
                   AND LOWER(TRIM(COALESCE(`bill_type`, 'water'))) = LOWER(TRIM(?))
-                  AND TRIM(COALESCE(`billing_period`, '')) = TRIM(?)
+                  AND TRIM(COALESCE(`due_period`, '')) = TRIM(?)
                   AND `is_hidden` = 0";
         $params = [
             trim((string) ($normalized['dd'] ?? '')),
             trim((string) ($normalized['property'] ?? '')),
             $billType,
-            $billingPeriod,
+            $duePeriod,
         ];
     }
 
@@ -774,7 +835,7 @@ function hide_duplicate_active_bills($pdo)
     ensure_billing_property_list_column($pdo);
     ensure_bill_type_column($pdo);
     ensure_billing_visibility_column($pdo);
-    require_billing_columns($pdo, ['billing_period']);
+    ensure_billing_due_period_column($pdo);
 
     $sql = "UPDATE `property_billing_records` AS t
             INNER JOIN (
@@ -784,7 +845,7 @@ function hide_duplicate_active_bills($pdo)
                         ELSE CONCAT('legacy:', LOWER(TRIM(`dd`)), '|', LOWER(TRIM(COALESCE(`property`, ''))))
                     END AS identity_key,
                     LOWER(TRIM(COALESCE(`bill_type`, 'water'))) AS bill_type_key,
-                    TRIM(COALESCE(`billing_period`, '')) AS billing_period_key,
+                    TRIM(COALESCE(`due_period`, '')) AS due_period_key,
                     MAX(`id`) AS keep_id
                 FROM `property_billing_records`
                 WHERE `is_hidden` = 0
@@ -794,7 +855,7 @@ function hide_duplicate_active_bills($pdo)
                         ELSE CONCAT('legacy:', LOWER(TRIM(`dd`)), '|', LOWER(TRIM(COALESCE(`property`, ''))))
                     END,
                     LOWER(TRIM(COALESCE(`bill_type`, 'water'))),
-                    TRIM(COALESCE(`billing_period`, ''))
+                    TRIM(COALESCE(`due_period`, ''))
                 HAVING COUNT(*) > 1
             ) AS d
               ON (
@@ -804,7 +865,7 @@ function hide_duplicate_active_bills($pdo)
                     END
                  ) = d.identity_key
              AND LOWER(TRIM(COALESCE(t.`bill_type`, 'water'))) = d.bill_type_key
-             AND TRIM(COALESCE(t.`billing_period`, '')) = d.billing_period_key
+             AND TRIM(COALESCE(t.`due_period`, '')) = d.due_period_key
              AND t.`id` <> d.keep_id
             SET t.`is_hidden` = 1
             WHERE t.`is_hidden` = 0";
@@ -812,12 +873,12 @@ function hide_duplicate_active_bills($pdo)
     return $pdo->exec($sql);
 }
 
-function hide_duplicate_active_bills_for_identity($pdo, $propertyListId, $dd, $property, $billType, $billingPeriod, $keepId)
+function hide_duplicate_active_bills_for_identity($pdo, $propertyListId, $dd, $property, $billType, $duePeriod, $keepId)
 {
     ensure_billing_property_list_column($pdo);
     ensure_bill_type_column($pdo);
     ensure_billing_visibility_column($pdo);
-    require_billing_columns($pdo, ['billing_period']);
+    ensure_billing_due_period_column($pdo);
 
     $identityId = normalize_positive_int($propertyListId);
     if ($identityId > 0) {
@@ -828,9 +889,9 @@ function hide_duplicate_active_bills_for_identity($pdo, $propertyListId, $dd, $p
                AND `id` <> ?
                AND `property_list_id` = ?
                AND LOWER(TRIM(COALESCE(`bill_type`, 'water'))) = LOWER(TRIM(?))
-               AND TRIM(COALESCE(`billing_period`, '')) = TRIM(?)"
+               AND TRIM(COALESCE(`due_period`, '')) = TRIM(?)"
         );
-        $stmt->execute([$keepId, $identityId, $billType, $billingPeriod]);
+        $stmt->execute([$keepId, $identityId, $billType, $duePeriod]);
         return $stmt->rowCount();
     }
 
@@ -842,9 +903,9 @@ function hide_duplicate_active_bills_for_identity($pdo, $propertyListId, $dd, $p
            AND LOWER(TRIM(`dd`)) = LOWER(TRIM(?))
            AND LOWER(TRIM(COALESCE(`property`, ''))) = LOWER(TRIM(?))
            AND LOWER(TRIM(COALESCE(`bill_type`, 'water'))) = LOWER(TRIM(?))
-           AND TRIM(COALESCE(`billing_period`, '')) = TRIM(?)"
+           AND TRIM(COALESCE(`due_period`, '')) = TRIM(?)"
     );
-    $stmt->execute([$keepId, $dd, $property, $billType, $billingPeriod]);
+    $stmt->execute([$keepId, $dd, $property, $billType, $duePeriod]);
     return $stmt->rowCount();
 }
 
@@ -898,7 +959,7 @@ function parse_boolean_config($value, $default = false)
     return $default;
 }
 
-function build_mock_bill_upload_response($billType, $dd, $property, $billingPeriod = '')
+function build_mock_bill_upload_response($billType, $dd, $property, $duePeriod = '')
 {
     $type = trim((string) $billType);
     if ($type === 'wifi') {
@@ -910,14 +971,14 @@ function build_mock_bill_upload_response($billType, $dd, $property, $billingPeri
 
     $safeDd = trim((string) $dd);
     $safeProperty = trim((string) $property);
-    $safeBillingPeriod = trim((string) $billingPeriod);
+    $safeDuePeriod = trim((string) $duePeriod);
 
     $base = [
         'bill_type' => $type,
         'property_list_id' => 0,
         'dd' => $safeDd,
         'property' => $safeProperty,
-        'billing_period' => $safeBillingPeriod,
+        'due_period' => $safeDuePeriod,
         'unit_owner' => '',
         'classification' => '',
         'deposit' => '',

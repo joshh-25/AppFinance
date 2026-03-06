@@ -7,7 +7,7 @@
   "rows": [
     {
       "sample": "8183_SW-9E FEBRUARY 2026 BILLING INVOICE.pdf",
-      "path": "ExcelExample/8183_SW-9E FEBRUARY 2026 BILLING INVOICE.pdf",
+      "path": "Examples/Excel/8183_SW-9E FEBRUARY 2026 BILLING INVOICE.pdf",
       "expected_bill_type": "association_dues",
       "normalized_bill_type": "association_dues",
       "detected_bill_type": "association_dues",
@@ -35,7 +35,7 @@
     },
     {
       "sample": "MANABE43090802-202601MANABE43090802_gYWb.pdf",
-      "path": "ExcelExample/MANABE43090802-202601MANABE43090802_gYWb.pdf",
+      "path": "Examples/Excel/MANABE43090802-202601MANABE43090802_gYWb.pdf",
       "expected_bill_type": "electricity",
       "normalized_bill_type": "",
       "detected_bill_type": "electricity",
@@ -63,7 +63,7 @@
     },
     {
       "sample": "electricity-bill-sample.pdf",
-      "path": "docs/samples/electricity-bill-sample.pdf",
+      "path": "Examples/Samples/electricity-bill-sample.pdf",
       "expected_bill_type": "electricity",
       "normalized_bill_type": "electricity",
       "detected_bill_type": "electricity",
@@ -91,7 +91,7 @@
     },
     {
       "sample": "water-bill-sample.pdf",
-      "path": "docs/samples/water-bill-sample.pdf",
+      "path": "Examples/Samples/water-bill-sample.pdf",
       "expected_bill_type": "water",
       "normalized_bill_type": "water",
       "detected_bill_type": "water",
@@ -119,7 +119,7 @@
     },
     {
       "sample": "wifi-bill-sample.pdf",
-      "path": "docs/samples/wifi-bill-sample.pdf",
+      "path": "Examples/Samples/wifi-bill-sample.pdf",
       "expected_bill_type": "internet",
       "normalized_bill_type": "internet",
       "detected_bill_type": "internet",

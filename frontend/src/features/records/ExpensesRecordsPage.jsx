@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import AppLayout from '../../shared/components/AppLayout.jsx';
 import ConfirmDialog from '../../shared/components/ConfirmDialog.jsx';
+import { SkeletonLine } from '../../shared/components/Skeleton.jsx';
 import Toast from '../../shared/components/Toast.jsx';
 import { useToast } from '../../shared/hooks/useToast.js';
 import { deleteExpense, fetchExpenses } from '../../shared/lib/api.js';
@@ -174,7 +175,15 @@ export default function ExpensesRecordsPage() {
           </button>
         </div>
 
-        {isLoading && <p>Loading expense records...</p>}
+        {isLoading && (
+          <div className="records-loading-shell" role="status" aria-live="polite" aria-label="Loading expense records">
+            <div className="records-loading-table">
+              {Array.from({ length: 8 }).map((_, index) => (
+                <SkeletonLine key={`expenses-records-loading-${index}`} width="100%" height={15} radius={8} />
+              ))}
+            </div>
+          </div>
+        )}
         {isError && <p className="error">{error?.message || 'Failed to load expense records.'}</p>}
 
         {!isLoading && !isError && totalRows === 0 && (

@@ -8,6 +8,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import LoginPage from '../LoginPage.jsx';
 import { checkSession } from '../../../shared/lib/auth.js';
 
+const ROUTER_FUTURE_FLAGS = {
+  v7_startTransition: true,
+  v7_relativeSplatPath: true
+};
+
 vi.mock('../../../shared/lib/auth.js', () => ({
   checkSession: vi.fn()
 }));
@@ -23,7 +28,7 @@ function renderLoginPage() {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
+      <MemoryRouter future={ROUTER_FUTURE_FLAGS}>
         <LoginPage />
       </MemoryRouter>
     </QueryClientProvider>

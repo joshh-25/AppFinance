@@ -3,7 +3,16 @@
  * Finance App File: backend/public/index.php
  * Purpose: Frontend app shell entrypoint.
  */
-session_start();
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    session_start();
+}
 
 function is_truthy_env_flag($value)
 {

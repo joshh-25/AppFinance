@@ -1,4 +1,4 @@
-﻿# Project Plan (Short Version)
+# Project Plan (Short Version)
 
 ## Purpose
 This plan tracks what the Finance web app should do, what is already done, and what is next.
@@ -938,7 +938,7 @@ Goal: Implement critical stability mechanisms from the Suggestions document that
 **Execution Status:** [x] Completed (2026-03-03)
 
 ### Task 38 — Sample Bill Detection Validation Matrix (Approved)
-- Validate parser coverage using local sample files in `ExcelExample/` and `docs/samples/`.
+- Validate parser coverage using local sample files in `Examples/Excel/` and `Examples/Samples/`.
 - For each sample, capture field-level detection results:
   - detected correctly
   - detected but normalized/adjusted
@@ -954,9 +954,9 @@ Goal: Implement critical stability mechanisms from the Suggestions document that
 **Execution Status:** [x] Completed (2026-03-03)
 
 **Artifacts:**
-- `docs/samples/parser_validation_input.json`
-- `docs/samples/parser_validation_report.json`
-- `docs/samples/parser_validation_report.md`
+- `Examples/Samples/parser_validation_input.json`
+- `Examples/Samples/parser_validation_report.json`
+- `Examples/Samples/parser_validation_report.md`
 
 **Summary Findings:**
 - 5/5 sample files had correct bill-type detection and passed required-field validation.
@@ -966,7 +966,7 @@ Goal: Implement critical stability mechanisms from the Suggestions document that
   - one electricity sample (`MANABE...pdf`): all core target fields detected
 - Gaps observed:
   - electricity sample `8183_SW-9E...pdf`: missing `electricity_account_no` and `electricity_due_date`
-  - electricity sample `docs/samples/electricity-bill-sample.pdf`: missing `electricity_due_date`
+  - electricity sample `Examples/Samples/electricity-bill-sample.pdf`: missing `electricity_due_date`
 - Follow-up parser improvements needed:
   - extend due-date pattern variants for electricity templates
   - add account-number label aliases for utility invoices that do not use current account keywords
@@ -1250,7 +1250,7 @@ Step 2 checklist:
 - [x] Added parser validation automation script:
   - [x] `infra/scripts/validate-ocr-parser-samples.mjs`
   - [x] Supports `--write` (refresh reports) and `--check` (CI gate).
-- [x] Added explicit expected outputs in `docs/samples/parser_validation_input.json` for:
+- [x] Added explicit expected outputs in `Examples/Samples/parser_validation_input.json` for:
   - [x] mixed invoice (`association_dues = 7440.00`, `water_amount = 215.00`)
   - [x] due-date and payment-status expectations.
 - [x] Fixed parser extraction edge cases in `frontend/src/shared/lib/ocrParser.js`:
@@ -1259,8 +1259,8 @@ Step 2 checklist:
   - [x] normalize noisy payment-status values (`Unpaid Reference ...` -> `Unpaid`)
   - [x] relax WiFi required fields to avoid false negatives when provider is missing.
 - [x] Regenerated parser validation reports:
-  - [x] `docs/samples/parser_validation_report.json`
-  - [x] `docs/samples/parser_validation_report.md`
+  - [x] `Examples/Samples/parser_validation_report.json`
+  - [x] `Examples/Samples/parser_validation_report.md`
 - [x] Added CI/release quality gates:
   - [x] `.github/workflows/ci.yml`
   - [x] `infra/ci/finance-ci.yml`
@@ -1272,3 +1272,5 @@ Acceptance criteria for Step 2:
   - `association_dues = 7440.00`
   - `water_amount = 215.00`
 - Existing billing integration tests and frontend build remain green.
+
+

@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS `property_billing_records` (
     `property_list_id` INT NULL,
     `dd` VARCHAR(120) NOT NULL,
     `property` VARCHAR(160) NOT NULL,
-    `billing_period` VARCHAR(7) NOT NULL DEFAULT '',
+    `due_period` VARCHAR(7) NOT NULL DEFAULT '',
     `unit_owner` VARCHAR(180) NOT NULL,
     `bill_type` VARCHAR(32) NOT NULL DEFAULT 'water',
     `is_hidden` TINYINT(1) NOT NULL DEFAULT 0,

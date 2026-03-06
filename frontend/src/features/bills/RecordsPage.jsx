@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import AppLayout from '../../shared/components/AppLayout.jsx';
+import { SkeletonLine } from '../../shared/components/Skeleton.jsx';
 import Toast from '../../shared/components/Toast.jsx';
 import { useToast } from '../../shared/hooks/useToast.js';
 import { fetchMergedBills } from '../../shared/lib/api.js';
@@ -324,7 +325,7 @@ function buildPropertyEditPayloadFromRow(row = {}) {
     property_list_id: Number(row.property_list_id || 0),
     dd: row.dd || '',
     property: row.property || '',
-    billing_period: normalizeBillingPeriodValue(row.billing_period),
+    due_period: normalizeBillingPeriodValue(row.due_period),
     unit_owner: row.unit_owner || '',
     classification: row.classification || '',
     deposit: row.deposit || '',
@@ -501,11 +502,6 @@ export default function RecordsPage() {
       );
 
       if (!fallbackType) {
-        if (populatedTypes.length > 0) {
-          showToast('warning', 'No editable bill ID exists for this row. Open the specific module tab and save once.');
-          return;
-        }
-
         const hasPropertyIdentity =
           Number(rowToEdit.property_list_id || 0) > 0 ||
           String(rowToEdit.dd || '').trim() !== '' ||
@@ -536,7 +532,7 @@ export default function RecordsPage() {
       property_list_id: Number(rowToEdit.property_list_id || 0),
       dd: rowToEdit.dd || '',
       property: rowToEdit.property || '',
-      billing_period: normalizeBillingPeriodValue(rowToEdit.billing_period),
+      due_period: normalizeBillingPeriodValue(rowToEdit.due_period),
       unit_owner: rowToEdit.unit_owner || '',
       classification: rowToEdit.classification || '',
       deposit: rowToEdit.deposit || '',
@@ -673,7 +669,15 @@ export default function RecordsPage() {
             {exporting ? 'Exporting...' : 'Export'}
           </button>
         </div>
-        {isLoading && <p>Loading records...</p>}
+        {isLoading && (
+          <div className="records-loading-shell" role="status" aria-live="polite" aria-label="Loading records">
+            <div className="records-loading-table">
+              {Array.from({ length: 8 }).map((_, index) => (
+                <SkeletonLine key={`bills-records-loading-${index}`} width="100%" height={15} radius={8} />
+              ))}
+            </div>
+          </div>
+        )}
         {isError && <p className="error">{error.message}</p>}
 
         {!isLoading && !isError && totalRows === 0 && (
@@ -753,3 +757,4 @@ export default function RecordsPage() {
     </AppLayout>
   );
 }
+

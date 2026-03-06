@@ -3,26 +3,18 @@ setlocal
 
 cd /d "%~dp0\.."
 
-echo [1/4] Installing backend dependencies...
+echo [1/2] Running backend migrations...
 cd backend
-call composer install
-if errorlevel 1 goto :error
-
-echo [2/4] Running backend migrations...
 call php tools\run_migrations.php
 if errorlevel 1 goto :error
 
-echo [3/4] Installing frontend dependencies...
+echo [2/2] Building frontend...
 cd ..\frontend
-call npm install
-if errorlevel 1 goto :error
-
-echo [4/4] Building frontend...
 call npm run build
 if errorlevel 1 goto :error
 
 echo.
-echo Setup and build completed.
+echo Build flow completed.
 exit /b 0
 
 :error

@@ -297,15 +297,13 @@ function parseUploadFieldsFromText(text) {
         internet_provider: pickTextMatch(parsingText, [/\bInternet\s*Provider[:\s-]*([^\n]+)/i, /\bISP[:\s-]*([^\n]+)/i, /\bProvider[:\s-]*([^\n]+)/i]),
         internet_account_no: pickTextMatch(parsingText, [
             /\bInternet\s*Account\s*No\.?[:\s-]*([A-Za-z0-9-]+)/i,
-            /\bCustomer\s*Acct\.?\s*No\.?[:\s-]*([A-Za-z0-9-]+)/i,
-            /\bAccount\s*(?:No|Number)\.?\s*[:\s-]*([A-Za-z0-9-]+)/i
+            /\bWi\s*Fi\s*Account\s*No\.?[:\s-]*([A-Za-z0-9-]+)/i
         ]),
         wifi_amount: pickTextMatch(parsingText, [/\bAmount\s*Due[:\s-]*([^\n]+)/i, /\bTotal(?:\s*Amount)?[:\s-]*([^\n]+)/i]),
         wifi_due_date: pickTextMatch(parsingText, [/\bDue\s*Date[:\s-]*([^\n]+)/i]),
         wifi_payment_status: pickTextMatch(parsingText, [/\bPayment\s*Status[:\s-]*([^\n]+)/i]),
         water_account_no: pickTextMatch(parsingText, [
-            /\bWater\s*Account\s*No\.?[:\s-]*([A-Za-z0-9-]+)/i,
-            /\bCustomer\s*Acct\.?\s*No\.?[:\s-]*([A-Za-z0-9-]+)/i
+            /\bWater\s*Account\s*No\.?[:\s-]*([A-Za-z0-9-]+)/i
         ]),
         water_amount: pickTextMatch(parsingText, [
             /\bWater\s*Cons(?:umption)?[^\n]*?([0-9]{1,3}(?:[, ]?[0-9]{3})*(?:\.\d{2})|[0-9]+\.\d{2})/i,
@@ -740,10 +738,12 @@ export function normalizeUploadData(input) {
             parsedFromText.association_payment_status || ''
         )
     );
-    const billingPeriod = normalizeBillingPeriodValue(
+    const duePeriod = normalizeBillingPeriodValue(
         pickUploadValue(
             lookup,
             [
+                'due_period',
+                'duePeriod',
                 'billing_period',
                 'billingPeriod',
                 'billing_month',
@@ -757,7 +757,7 @@ export function normalizeUploadData(input) {
             ],
             ''
         )
-    ) || normalizeBillingPeriodValue(parsedFromText.billing_period || '')
+    ) || normalizeBillingPeriodValue(parsedFromText.due_period || parsedFromText.billing_period || '')
       || normalizeBillingPeriodValue(pickUploadValue(lookup, ['electricity_billing_date', 'electricityBillingDate'], ''))
       || normalizeBillingPeriodValue(electricityDueDate)
       || normalizeBillingPeriodValue(associationDueDate);
@@ -767,7 +767,7 @@ export function normalizeUploadData(input) {
         property_list_id: Number(pickUploadValue(lookup, ['property_list_id', 'propertyListId'], '0')) || 0,
         dd: pickUploadValue(lookup, ['dd', 'property_dd', 'propertydd'], parsedFromText.dd || ''),
         property: pickUploadValue(lookup, ['property', 'property_name', 'propertyName'], parsedFromText.property || ''),
-        billing_period: billingPeriod,
+        due_period: duePeriod,
         unit_owner: pickUploadValue(lookup, ['unit_owner', 'unitOwner', 'tenant_name', 'tenantName']),
         classification: pickUploadValue(lookup, ['classification']),
         deposit: normalizeAmountValue(pickUploadValue(lookup, ['deposit'])),
@@ -779,7 +779,7 @@ export function normalizeUploadData(input) {
         ),
         internet_account_no: pickUploadValue(
             lookup,
-            ['internet_account_no', 'internetAccountNo', 'account_no', 'accountNo'],
+            ['internet_account_no', 'internetAccountNo'],
             parsedFromText.internet_account_no || ''
         ),
         wifi_amount: wifiAmount,

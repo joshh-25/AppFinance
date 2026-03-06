@@ -7,6 +7,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import AppLayout from '../../shared/components/AppLayout.jsx';
 import BillingsFlowTabs from '../../shared/components/BillingsFlowTabs.jsx';
 import ConfirmDialog from '../../shared/components/ConfirmDialog.jsx';
+import { SkeletonLine } from '../../shared/components/Skeleton.jsx';
 import Toast from '../../shared/components/Toast.jsx';
 import { useToast } from '../../shared/hooks/useToast.js';
 import { useUnsavedChangesGuard } from '../../shared/hooks/useUnsavedChangesGuard.js';
@@ -204,15 +205,26 @@ export default function PropertyRecordsPage() {
       }
     };
 
+    const hasContextIdentity = (source) =>
+      Number(source?.property_list_id || source?.id || 0) > 0 ||
+      String(source?.dd || '').trim() !== '' ||
+      String(source?.property || '').trim() !== '';
+
     const sharedSelection = parseContext(window.sessionStorage.getItem(SHARED_BILL_SELECTION_KEY));
     const directSelection = parseContext(window.sessionStorage.getItem(SELECTED_PROPERTY_CONTEXT_KEY));
     const sharedForm = sharedSelection?.form && typeof sharedSelection.form === 'object' ? sharedSelection.form : null;
-    const contextSource = directSelection || sharedForm || sharedSelection;
-    const hasContextIdentity =
-      Number(contextSource?.property_list_id || contextSource?.id || 0) > 0 ||
-      String(contextSource?.dd || '').trim() !== '' ||
-      String(contextSource?.property || '').trim() !== '';
-    if (contextSource && hasContextIdentity) {
+
+    // Prefer direct selection only when it has usable identity fields.
+    // This avoids stale/empty direct context wiping out a valid shared bill selection.
+    const contextSource = hasContextIdentity(directSelection)
+      ? directSelection
+      : hasContextIdentity(sharedForm)
+        ? sharedForm
+        : hasContextIdentity(sharedSelection)
+          ? sharedSelection
+          : null;
+
+    if (contextSource) {
       const nextForm = mapToPropertyForm(contextSource);
       setForm(nextForm);
       setBaselineForm(nextForm);
@@ -870,7 +882,15 @@ export default function PropertyRecordsPage() {
           </div>
         )}
 
-        {panelMode === 'table' && isLoading && <p>Loading records...</p>}
+        {panelMode === 'table' && isLoading && (
+          <div className="records-loading-shell" role="status" aria-live="polite" aria-label="Loading property records">
+            <div className="records-loading-table">
+              {Array.from({ length: 8 }).map((_, index) => (
+                <SkeletonLine key={`property-records-loading-${index}`} width="100%" height={15} radius={8} />
+              ))}
+            </div>
+          </div>
+        )}
         {panelMode === 'table' && isError && <p className="error">{error.message}</p>}
 
         {panelMode === 'table' && !isLoading && !isError && filtered.length === 0 && (

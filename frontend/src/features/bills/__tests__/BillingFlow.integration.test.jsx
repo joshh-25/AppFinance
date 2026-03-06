@@ -16,11 +16,17 @@ import {
   createBill,
   fetchBills,
   fetchMergedBills,
+  fetchOcrHealth,
   fetchPropertyRecords,
   lookupPropertyByAccountNumber,
   updateBill,
   uploadBill
 } from '../../../shared/lib/api.js';
+
+const ROUTER_FUTURE_FLAGS = {
+  v7_startTransition: true,
+  v7_relativeSplatPath: true
+};
 
 let mockBills = [];
 let mockPropertyRecords = [];
@@ -75,6 +81,7 @@ vi.mock('../../../shared/lib/api.js', () => ({
     };
   }),
   fetchPropertyRecords: vi.fn(async () => mockPropertyRecords),
+  fetchOcrHealth: vi.fn(async () => ({ success: true, healthy: true, message: 'ok' })),
   fetchMergedBills: vi.fn(async () => {
     const groups = {};
     for (const row of mockBills) {
@@ -167,7 +174,9 @@ function renderWithProviders(ui, initialEntries = ['/']) {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={initialEntries}>{ui}</MemoryRouter>
+      <MemoryRouter initialEntries={initialEntries} future={ROUTER_FUTURE_FLAGS}>
+        {ui}
+      </MemoryRouter>
     </QueryClientProvider>
   );
 }
@@ -198,8 +207,8 @@ describe('Billing flow integration coverage', () => {
     const paymentView = renderWithProviders(<WaterBillsPage />, ['/bills/water']);
 
     await waitFor(() => {
-      expect(fetchPropertyRecords).toHaveBeenCalled();
-    });
+    expect(fetchPropertyRecords).toHaveBeenCalled();
+  });
     const propertyInput = await screen.findByLabelText('Property / DD');
     fireEvent.change(propertyInput, { target: { value: 'Lafayette' } });
 
@@ -456,7 +465,7 @@ describe('Billing flow integration coverage', () => {
       success: true,
       data: {
         bill_type: 'association_dues',
-        billing_period: '2026-02',
+        due_period: '2026-02',
         association_dues: '7440.00',
         association_due_date: '2026-02-20',
         association_payment_status: 'Unpaid',
@@ -585,6 +594,7 @@ describe('Billing flow integration coverage', () => {
     expect(fetchMergedBills).toBeDefined();
     expect(fetchPropertyRecords).toBeDefined();
     expect(uploadBill).toBeDefined();
+    expect(fetchOcrHealth).toBeDefined();
   });
 
   it('editing a February bill does not alter the January bill for the same property', async () => {
@@ -595,7 +605,7 @@ describe('Billing flow integration coverage', () => {
         dd: '24 LPS 9PQ',
         property: 'Lafayette',
         bill_type: 'water',
-        billing_period: '2025-01',
+        due_period: '2025-01',
         water_account_no: 'WTR-001',
         water_amount: '800',
         water_due_date: '2025-01-28',
@@ -606,7 +616,7 @@ describe('Billing flow integration coverage', () => {
         dd: '24 LPS 9PQ',
         property: 'Lafayette',
         bill_type: 'water',
-        billing_period: '2025-02',
+        due_period: '2025-02',
         water_account_no: 'WTR-001',
         water_amount: '950',
         water_due_date: '2025-02-28',
@@ -630,7 +640,7 @@ describe('Billing flow integration coverage', () => {
         water_amount: '950',
         water_due_date: '2025-02-28',
         water_payment_status: 'Unpaid',
-        billing_period: '2025-02'
+        due_period: '2025-02'
       })
     );
 
@@ -659,7 +669,7 @@ describe('Billing flow integration coverage', () => {
     const januaryRecord = mockBills.find((row) => Number(row.id) === 301);
     expect(januaryRecord).toBeDefined();
     expect(januaryRecord.water_amount).toBe('800');
-    expect(januaryRecord.billing_period).toBe('2025-01');
+    expect(januaryRecord.due_period).toBe('2025-01');
 
     // February record must reflect the new amount
     const februaryRecord = mockBills.find((row) => Number(row.id) === 302);

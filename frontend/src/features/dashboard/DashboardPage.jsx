@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import AppLayout from '../../shared/components/AppLayout.jsx';
-import ReelsSkeletonLoader from '../../shared/components/ReelsSkeletonLoader.jsx';
+import { SkeletonLine } from '../../shared/components/Skeleton.jsx';
 import { fetchBills } from '../../shared/lib/api.js';
 
 const MODULE_AMOUNT_STATUS_FIELDS = [
@@ -111,6 +111,60 @@ function sortByMostRecent(rows) {
   });
 }
 
+function DashboardCardSkeleton() {
+  return (
+    <article className="card kpi-card" aria-hidden="true">
+      <SkeletonLine width="55%" height={12} />
+      <div style={{ height: 10 }} />
+      <SkeletonLine width="70%" height={24} radius={10} />
+    </article>
+  );
+}
+
+function DashboardLoadingState() {
+  return (
+    <AppLayout title="Dashboard">
+      <section className="kpi-grid" role="status" aria-live="polite" aria-label="Loading dashboard data">
+        <DashboardCardSkeleton />
+        <DashboardCardSkeleton />
+        <DashboardCardSkeleton />
+        <DashboardCardSkeleton />
+        <DashboardCardSkeleton />
+      </section>
+
+      <section className="dashboard-main-grid">
+        <article className="card dashboard-recent-card" aria-hidden="true">
+          <div className="card-title-row">
+            <div className="card-title-left">
+              <SkeletonLine width="160px" height={18} radius={8} />
+            </div>
+            <div className="card-title-actions">
+              <SkeletonLine width="120px" height={38} radius={10} />
+            </div>
+          </div>
+          <div style={{ marginTop: 16, display: 'grid', gap: 12 }}>
+            <SkeletonLine width="100%" height={14} radius={7} />
+            <SkeletonLine width="100%" height={14} radius={7} />
+            <SkeletonLine width="100%" height={14} radius={7} />
+            <SkeletonLine width="92%" height={14} radius={7} />
+            <SkeletonLine width="85%" height={14} radius={7} />
+          </div>
+        </article>
+
+        <article className="card dashboard-quick-actions" aria-hidden="true">
+          <SkeletonLine width="140px" height={18} radius={8} />
+          <div style={{ marginTop: 16, display: 'grid', gap: 10 }}>
+            <SkeletonLine width="100%" height={40} radius={10} />
+            <SkeletonLine width="100%" height={40} radius={10} />
+            <SkeletonLine width="100%" height={40} radius={10} />
+            <SkeletonLine width="100%" height={40} radius={10} />
+          </div>
+        </article>
+      </section>
+    </AppLayout>
+  );
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate();
   const {
@@ -158,7 +212,7 @@ export default function DashboardPage() {
   }, [records]);
 
   if (isLoading) {
-    return <ReelsSkeletonLoader />;
+    return <DashboardLoadingState />;
   }
 
   return (
