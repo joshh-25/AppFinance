@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import AppLayout from '../../shared/components/AppLayout.jsx';
 import Toast from '../../shared/components/Toast.jsx';
@@ -7,7 +7,7 @@ import { createBill, fetchPropertyRecords, uploadBill } from '../../shared/lib/a
 import { detectBillTypeFromData, normalizeUploadData, validateUploadExtraction } from '../../shared/lib/ocrParser.js';
 import { useToast } from '../../shared/hooks/useToast.js';
 
-const REVIEW_STORAGE_KEY = 'finance:bill-review-rows:v1';
+const REVIEW_STORAGE_KEY = 'finance:bill-review-rows:v2';
 const BILLING_PERIOD_REGEX = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 const BILL_TYPE_RECORD_FIELDS = {
@@ -86,6 +86,59 @@ function normalizeBillTypeValue(value) {
   return normalized;
 }
 
+function normalizeAmountToken(value) {
+  const raw = cleanTextValue(value).replace(/,/g, '');
+  if (raw === '') {
+    return '';
+  }
+  const match = raw.match(/-?\d+(?:\.\d{1,4})?/);
+  return match ? match[0] : raw;
+}
+
+function hasHighConfidenceSecondaryTypeSignal(data, billType) {
+  if (!data || typeof data !== 'object') {
+    return false;
+  }
+  if (billType === 'water') {
+    return cleanTextValue(data.water_account_no) !== '';
+  }
+  if (billType === 'electricity') {
+    return cleanTextValue(data.electricity_account_no) !== '';
+  }
+  if (billType === 'internet') {
+    return cleanTextValue(data.internet_account_no) !== '' || cleanTextValue(data.internet_provider) !== '';
+  }
+  if (billType === 'association_dues') {
+    return cleanTextValue(data.association_dues) !== '';
+  }
+  return false;
+}
+
+function deriveReviewBillTypes(normalized, primaryType) {
+  const resolvedPrimary = BILL_TYPE_RECORD_FIELDS[primaryType] ? primaryType : 'water';
+  const types = [resolvedPrimary];
+
+  // Mixed association invoices can include water consumption line-items.
+  if (resolvedPrimary === 'association_dues') {
+    const associationAmount = normalizeAmountToken(normalized.association_dues);
+    const waterAmount = normalizeAmountToken(normalized.water_amount);
+    if (waterAmount !== '' && waterAmount !== associationAmount) {
+      types.push('water');
+    }
+  }
+
+  ['internet', 'water', 'electricity', 'association_dues'].forEach((candidateType) => {
+    if (types.includes(candidateType)) {
+      return;
+    }
+    if (hasHighConfidenceSecondaryTypeSignal(normalized, candidateType)) {
+      types.push(candidateType);
+    }
+  });
+
+  return types;
+}
+
 function createRowId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
@@ -149,7 +202,6 @@ export default function BillReviewPage() {
   }, [rows]);
 
   const selectedCount = selectedRowIds.length;
-  const pendingCount = useMemo(() => rows.filter((row) => row.status !== 'saved').length, [rows]);
 
   function getPropertyRecordLabel(record) {
     const propertyValue = cleanTextValue(record.property);
@@ -359,26 +411,29 @@ export default function BillReviewPage() {
             billing_period: ''
           });
           const normalized = normalizeUploadData(result) || {};
-          const billType = normalizeBillTypeValue(
+          const primaryType = normalizeBillTypeValue(
             normalized.bill_type || detectBillTypeFromData(normalized) || 'water'
           );
-          const rowData = {
-            ...INITIAL_BILL_DATA,
-            ...normalized,
-            bill_type: BILL_TYPE_RECORD_FIELDS[billType] ? billType : 'water',
-            property_list_id: Number(normalized.property_list_id || 0)
-          };
-          const resolvedType = rowData.bill_type;
-          const statusInfo = normalizeRowStatus(rowData, resolvedType);
+          const rowTypes = deriveReviewBillTypes(normalized, primaryType);
 
-          scannedRows.push({
-            id: createRowId(),
-            source_file_name: file.name || 'Uploaded file',
-            bill_type: resolvedType,
-            status: statusInfo.status,
-            scan_error: statusInfo.validationMessage,
-            save_error: '',
-            data: rowData
+          rowTypes.forEach((rowType) => {
+            const rowData = {
+              ...INITIAL_BILL_DATA,
+              ...normalized,
+              bill_type: rowType,
+              property_list_id: Number(normalized.property_list_id || 0)
+            };
+            const statusInfo = normalizeRowStatus(rowData, rowType);
+
+            scannedRows.push({
+              id: createRowId(),
+              source_file_name: file.name || 'Uploaded file',
+              bill_type: rowType,
+              status: statusInfo.status,
+              scan_error: statusInfo.validationMessage,
+              save_error: '',
+              data: rowData
+            });
           });
         } catch (error) {
           scannedRows.push({
@@ -411,7 +466,6 @@ export default function BillReviewPage() {
   return (
     <AppLayout
       title="Bill Review"
-      subtitle="Upload mixed bills, review extracted rows, edit, and save clean records."
       contentClassName="shell-content-lock-scroll"
     >
       <Toast toasts={toasts} onDismiss={removeToast} />
@@ -420,7 +474,6 @@ export default function BillReviewPage() {
         <div className="card-title-row">
           <div className="card-title-left">
             <h3 className="card-title">Bills Review Queue</h3>
-            <p className="muted-text">Pending rows: {pendingCount}</p>
           </div>
           <div className="card-title-actions">
             <button type="button" className="btn btn-secondary" onClick={() => setIsUploadModalOpen(true)} disabled={uploading}>

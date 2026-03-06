@@ -12,6 +12,71 @@ function navClassName({ isActive }) {
   return isActive ? 'shell-nav-link active' : 'shell-nav-link';
 }
 
+const BILLINGS_ENTRY_PATH = '/bills/wifi';
+
+function FinanceBrandIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M4 8a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v1H6a2 2 0 0 0-2 2V8z"
+      />
+      <rect x="4" y="9" width="16" height="10" rx="2" />
+      <circle cx="16.2" cy="14" r="1.2" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function SidebarNavIcon({ item }) {
+  if (item === 'dashboard') {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
+        <rect x="4" y="4" width="7" height="7" rx="1.6" />
+        <rect x="13" y="4" width="7" height="5" rx="1.4" />
+        <rect x="13" y="11" width="7" height="9" rx="1.6" />
+        <rect x="4" y="13" width="7" height="7" rx="1.6" />
+      </svg>
+    );
+  }
+  if (item === 'records') {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
+        <rect x="4.5" y="4" width="15" height="16" rx="2.2" />
+        <path strokeLinecap="round" d="M8 9h8M8 13h8M8 17h5" />
+      </svg>
+    );
+  }
+  if (item === 'billings') {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13 2.5L5.8 12H12l-1 9.5L18.2 12H12.8L13 2.5z" />
+      </svg>
+    );
+  }
+  if (item === 'review') {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
+        <rect x="4.5" y="4" width="15" height="16" rx="2.2" />
+        <path strokeLinecap="round" d="M8 9h8M8 13h6" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8 16.5l2 2 4-4" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M4 8a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v1H6a2 2 0 0 0-2 2V8z"
+      />
+      <rect x="4" y="9" width="16" height="10" rx="2" />
+      <circle cx="16.2" cy="14" r="1.2" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 function getUserInitials(name) {
   const normalized = String(name || '').trim();
   if (normalized === '') {
@@ -33,7 +98,7 @@ function getUserInitials(name) {
 
 export default function AppLayout({
   title,
-  subtitle = 'Manage your utility payments securely.',
+  subtitle = '',
   children,
   contentClassName = '',
   onNavigateAttempt = null
@@ -113,7 +178,6 @@ export default function AppLayout({
   function billingsLinkClass() {
     const path = location.pathname;
     const isBillingsPath =
-      path === '/billings' ||
       path.startsWith('/property-records') ||
       (path.startsWith('/bills/') && path !== '/bills/review');
     return isBillingsPath
@@ -142,7 +206,7 @@ export default function AppLayout({
   }
 
   const currentPath = location.pathname;
-  const isBillsModulePath = currentPath.startsWith('/billings') || currentPath.startsWith('/bills/');
+  const isBillsModulePath = currentPath.startsWith('/bills/');
   const isExpensesModulePath = currentPath === '/expenses' || currentPath.startsWith('/records/expenses');
   const isRecordsModulePath = currentPath.startsWith('/records');
   const isPropertyRecordsModulePath = currentPath.startsWith('/property-records');
@@ -177,9 +241,7 @@ export default function AppLayout({
             onClick={(event) => handleNavigation(event, '/dashboard')}
           >
             <div className="brand-mark" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 2L4 14h7l-1 8 10-12h-7l0-8z" />
-              </svg>
+              <FinanceBrandIcon />
             </div>
             <h2>Finance</h2>
           </Link>
@@ -187,27 +249,52 @@ export default function AppLayout({
         <nav className="shell-nav">
           <p className="shell-nav-label">Modules</p>
           <NavLink to="/dashboard" className={navClassName} onClick={(event) => handleNavigation(event, '/dashboard')}>
-            Dashboard
+            <span className="shell-nav-item">
+              <span className="shell-nav-icon" aria-hidden="true">
+                <SidebarNavIcon item="dashboard" />
+              </span>
+              <span>Dashboard</span>
+            </span>
           </NavLink>
           <NavLink to="/records" className={navClassName} onClick={(event) => handleNavigation(event, '/records')}>
-            Records
+            <span className="shell-nav-item">
+              <span className="shell-nav-icon" aria-hidden="true">
+                <SidebarNavIcon item="records" />
+              </span>
+              <span>Records</span>
+            </span>
           </NavLink>
           <Link
-            to="/billings"
+            to={BILLINGS_ENTRY_PATH}
             className={billingsLinkClass()}
-            onClick={(event) => handleNavigation(event, '/billings')}
+            onClick={(event) => handleNavigation(event, BILLINGS_ENTRY_PATH)}
           >
-            Billings
+            <span className="shell-nav-item">
+              <span className="shell-nav-icon" aria-hidden="true">
+                <SidebarNavIcon item="billings" />
+              </span>
+              <span>Billings</span>
+            </span>
           </Link>
           <Link
             to="/bills/review"
             className={billReviewLinkClass()}
             onClick={(event) => handleNavigation(event, '/bills/review')}
           >
-            Bills Review
+            <span className="shell-nav-item">
+              <span className="shell-nav-icon" aria-hidden="true">
+                <SidebarNavIcon item="review" />
+              </span>
+              <span>Bills Review</span>
+            </span>
           </Link>
           <NavLink to="/expenses" className={navClassName} onClick={(event) => handleNavigation(event, '/expenses')}>
-            Expenses
+            <span className="shell-nav-item">
+              <span className="shell-nav-icon" aria-hidden="true">
+                <SidebarNavIcon item="expenses" />
+              </span>
+              <span>Expenses</span>
+            </span>
           </NavLink>
         </nav>
         <a href="/Finance/logout.php" className="shell-user">
@@ -228,7 +315,7 @@ export default function AppLayout({
               <span />
             </button>
             <h1>{title}</h1>
-            <p className="shell-subtitle">{subtitle}</p>
+            {subtitle ? <p className="shell-subtitle">{subtitle}</p> : null}
           </div>
           <div className="header-actions">
             <button

@@ -1214,3 +1214,61 @@ Stop point:
 
 Residual manual checks (device-only):
 - [ ] Physical-phone UI walkthrough (iOS Safari / Android Chrome) still needed for final mobile UX sign-off.
+
+---
+
+## Risk Mitigation Track (Approved) - Step 1
+### Deterministic Account-to-Property Auto-Fill
+Goal: prevent wrong property auto-fill when account-number matches are ambiguous.
+
+Scope for Step 1:
+- Backend lookup behavior only (no visual redesign).
+- Keep existing upload/OCR flow and API contract stable.
+
+Step 1 checklist:
+- [x] Add dedicated account directory table for property-linked account numbers (`property_account_directory`).
+- [x] Import January/February/March account mappings into the directory.
+- [x] Connect directory to `property_list` using `property_list_id` with FK cascade (`ON DELETE CASCADE`).
+- [x] Sync directory links on Property Record create/update.
+- [x] Use directory as lookup fallback for `account_lookup_search` so detected account numbers can auto-fill property.
+- [x] Backfill and link previously unmatched property rows.
+- [x] Add explicit ambiguity handling rule when multiple active rows share the same normalized account (return `needs_review` instead of auto-fill).
+- [x] Add tests for ambiguity scenarios (backend + frontend integration).
+
+Acceptance criteria for Step 1:
+- Account detection auto-fills the correct property when a unique mapping exists.
+- Deleting a property record deletes linked account mapping row automatically.
+- No regression in bill create/update/upload and records flows.
+
+---
+
+## Risk Mitigation Track (Approved) - Step 2
+### OCR Parser Regression Guard + Sample Validation Automation
+Goal: prevent OCR parser regressions (especially mixed Association + Water invoices) from reappearing silently.
+
+Step 2 checklist:
+- [x] Added parser validation automation script:
+  - [x] `infra/scripts/validate-ocr-parser-samples.mjs`
+  - [x] Supports `--write` (refresh reports) and `--check` (CI gate).
+- [x] Added explicit expected outputs in `docs/samples/parser_validation_input.json` for:
+  - [x] mixed invoice (`association_dues = 7440.00`, `water_amount = 215.00`)
+  - [x] due-date and payment-status expectations.
+- [x] Fixed parser extraction edge cases in `frontend/src/shared/lib/ocrParser.js`:
+  - [x] handle OCR-glued tokens (e.g., `2026Due Date`) during text parsing
+  - [x] prioritize parsed water line-item amount over fallback totals
+  - [x] normalize noisy payment-status values (`Unpaid Reference ...` -> `Unpaid`)
+  - [x] relax WiFi required fields to avoid false negatives when provider is missing.
+- [x] Regenerated parser validation reports:
+  - [x] `docs/samples/parser_validation_report.json`
+  - [x] `docs/samples/parser_validation_report.md`
+- [x] Added CI/release quality gates:
+  - [x] `.github/workflows/ci.yml`
+  - [x] `infra/ci/finance-ci.yml`
+  - [x] `docs/operations/ReleaseChecklist.md`
+
+Acceptance criteria for Step 2:
+- Parser validation passes `5/5` sample files.
+- Mixed Association invoice correctly yields:
+  - `association_dues = 7440.00`
+  - `water_amount = 215.00`
+- Existing billing integration tests and frontend build remain green.

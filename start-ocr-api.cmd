@@ -19,6 +19,4 @@ if not exist "%OCR_PY%" (
 cd /d "%OCR_DIR%"
 echo Starting OCR API on http://0.0.0.0:8001
 "%OCR_PY%" -m uvicorn app:app --host 0.0.0.0 --port 8001
-
-//cd:\xampp\htdocs\Finance
-start-ocr-api.cmd
+  

@@ -1,7 +1,7 @@
 // Finance App File: frontend\src\pages\PaymentFormPage.jsx
 // Purpose: Frontend/support source file for the Finance app.
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import AppLayout from '../../shared/components/AppLayout.jsx';
@@ -9,19 +9,17 @@ import BillingsFlowTabs from '../../shared/components/BillingsFlowTabs.jsx';
 import Toast from '../../shared/components/Toast.jsx';
 import PaymentForm from '../../shared/components/PaymentForm.jsx';
 import UploadModal from '../../shared/components/UploadModal.jsx';
-import AccountLookupUploadModal from '../../shared/components/AccountLookupUploadModal.jsx';
 import ErrorDialog from '../../shared/components/ErrorDialog.jsx';
 import {
   createBill,
   fetchBills,
   fetchPropertyRecords,
-  importAccountLookupEntries,
   lookupPropertyByAccountNumber,
   updateBill,
   uploadBill
 } from '../../shared/lib/api.js';
 import { getBillingsFlowNextPath, getBillingsFlowPrevPath } from '../../shared/lib/billingsFlow.js';
-import { normalizeAccountNumberForLookup, parseAccountLookupFiles } from '../../shared/lib/accountLookupParser.js';
+import { normalizeAccountNumberForLookup } from '../../shared/lib/accountLookupParser.js';
 import { detectBillTypeFromData, normalizeUploadData, validateUploadExtraction } from '../../shared/lib/ocrParser.js';
 import {
   clearScopedGlobalEditMode,
@@ -348,8 +346,6 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [isAccountLookupUploadModalOpen, setIsAccountLookupUploadModalOpen] = useState(false);
-  const [importingAccountLookup, setImportingAccountLookup] = useState(false);
   const [uploadMismatchDialog, setUploadMismatchDialog] = useState({
     open: false,
     title: 'Bill Type Mismatch',
@@ -868,7 +864,7 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
     });
   }, [propertyRecords, comboSearch]);
 
-  function persistBillSelection(nextForm, label) {
+  const persistBillSelection = useCallback((nextForm, label) => {
     window.sessionStorage.setItem(
       billSelectionKey,
       JSON.stringify({
@@ -884,9 +880,9 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
       SELECTED_PROPERTY_CONTEXT_KEY,
       JSON.stringify(buildPropertyRecordContextFromBillForm(nextForm))
     );
-  }
+  }, [billSelectionKey]);
 
-  function applyResolvedPropertyMatch(match) {
+  const applyResolvedPropertyMatch = useCallback((match) => {
     if (!match || typeof match !== 'object') {
       return false;
     }
@@ -923,7 +919,7 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
     setIsComboDropdownOpen(false);
     persistBillSelection(next, label);
     return true;
-  }
+  }, [activeBillType, persistBillSelection]);
 
   function handleOptionSelect(record) {
     const selectedPropertyListId = Number(record.property_list_id || record.id || 0);
@@ -1258,38 +1254,6 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
     setTablePage(1);
   }
 
-  async function handleAccountLookupUpload(event) {
-    const files = Array.from(event.target.files || []);
-    event.target.value = '';
-    if (files.length === 0) {
-      return;
-    }
-
-    setImportingAccountLookup(true);
-    try {
-      const { entries, stats } = await parseAccountLookupFiles(files);
-      if (!Array.isArray(entries) || entries.length === 0) {
-        showToast('warning', 'No account-number mappings were detected in the selected files.');
-        return;
-      }
-
-      const result = await importAccountLookupEntries({ entries });
-      const summary = result?.data || {};
-      const inserted = Number(summary.inserted || 0);
-      const updated = Number(summary.updated || 0);
-      const skipped = Number(summary.skipped || 0);
-      showToast(
-        'success',
-        `Imported account directory: ${inserted} inserted, ${updated} updated, ${skipped} skipped from ${stats.files} file(s).`
-      );
-      setIsAccountLookupUploadModalOpen(false);
-    } catch (error) {
-      showToast('error', String(error?.message || 'Failed to import account lookup files.'));
-    } finally {
-      setImportingAccountLookup(false);
-    }
-  }
-
   async function handleModuleUpload(event) {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) {
@@ -1316,8 +1280,10 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
       const detectedBillType = normalizeBillTypeValue(
         normalized.bill_type || detectBillTypeFromData(normalized) || ''
       );
+      const isDetectedTypeMismatch = detectedBillType !== '' && detectedBillType !== activeBillType;
+      const activeTypeValidation = validateUploadExtraction(normalized, activeBillType);
 
-      if (detectedBillType !== '' && detectedBillType !== activeBillType) {
+      if (isDetectedTypeMismatch && !activeTypeValidation.valid) {
         const detectedLabel = getBillTypeUploadLabel(detectedBillType);
         const expectedLabel = getBillTypeUploadLabel(activeBillType);
         setUploadMismatchDialog({
@@ -1375,7 +1341,16 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
       if (!validation.valid) {
         showToast('warning', validation.message || 'Upload complete. Review extracted fields before saving.');
       } else {
-        showToast('success', `Uploaded ${file.name} and filled bill fields.`);
+        if (isDetectedTypeMismatch) {
+          const detectedLabel = getBillTypeUploadLabel(detectedBillType);
+          const expectedLabel = getBillTypeUploadLabel(activeBillType);
+          showToast(
+            'warning',
+            `Detected ${detectedLabel} invoice format, but ${expectedLabel} fields were found and filled.`
+          );
+        } else {
+          showToast('success', `Uploaded ${file.name} and filled bill fields.`);
+        }
       }
 
       setIsUploadModalOpen(false);
@@ -1435,6 +1410,17 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
         }
 
         const matched = result?.data || null;
+        const matchStatus = String(matched?.match_status || 'matched').trim().toLowerCase();
+        if (matchStatus === 'needs_review') {
+          const candidateCount = Math.max(0, Number(matched?.candidate_count || 0));
+          const reviewMessage =
+            candidateCount > 1
+              ? `Multiple properties share this account number (${candidateCount} matches). Select Property / DD manually.`
+              : 'This account number needs manual review. Select Property / DD manually.';
+          showToast('warning', reviewMessage);
+          return;
+        }
+
         const matchedPropertyId = Number(matched?.property_list_id || 0);
         const matchedPropertyName = String(matched?.property || matched?.property_name || '').trim().toLowerCase();
         const currentPropertyId = Number(formRef.current.property_list_id || 0);
@@ -1463,6 +1449,7 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
     return () => window.clearTimeout(timer);
   }, [
     activeBillType,
+    applyResolvedPropertyMatch,
     form.billing_period,
     isEditMode,
     lookupAccountField,
@@ -1480,7 +1467,6 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
   return (
     <AppLayout
       title={BILL_TITLES[billMode] || 'Bills'}
-      subtitle="Create and update utility bill records by module."
       contentClassName="shell-content-lock-scroll"
     >
       <Toast toasts={toasts} onDismiss={removeToast} />
@@ -1536,8 +1522,6 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
         onNavigateNext={() => handleBillFlowNavigation(nextFlowPath)}
         onNavigateBack={() => handleBillFlowNavigation(finalStepBackPath, { skipUnsavedPrompt: true })}
         onOpenUpload={() => setIsUploadModalOpen(true)}
-        onOpenAccountLookupUpload={() => setIsAccountLookupUploadModalOpen(true)}
-        importingAccountLookup={importingAccountLookup}
         nextButtonLabel="Back to Property Records"
       />
       <UploadModal
@@ -1549,16 +1533,6 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
           }
         }}
         onUpload={handleModuleUpload}
-      />
-      <AccountLookupUploadModal
-        open={isAccountLookupUploadModalOpen}
-        importing={importingAccountLookup}
-        onClose={() => {
-          if (!importingAccountLookup) {
-            setIsAccountLookupUploadModalOpen(false);
-          }
-        }}
-        onUpload={handleAccountLookupUpload}
       />
       <ErrorDialog
         open={uploadMismatchDialog.open}

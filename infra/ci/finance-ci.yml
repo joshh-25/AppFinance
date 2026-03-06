@@ -61,6 +61,12 @@ jobs:
         run: npm run test -- --run
         working-directory: frontend
 
+      - name: OCR parser sample validation
+        run: node infra/scripts/validate-ocr-parser-samples.mjs --check
+
       - name: Frontend build
         run: npm run build
         working-directory: frontend
+
+      - name: Frontend build freshness check
+        run: node infra/scripts/check-frontend-build-freshness.mjs

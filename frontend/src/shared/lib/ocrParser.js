@@ -1,5 +1,5 @@
 export const UPLOAD_REQUIRED_FIELDS_BY_TYPE = {
-    internet: ['wifi_amount', 'internet_account_no', 'wifi_due_date', 'wifi_payment_status', 'internet_provider'],
+    internet: ['wifi_amount', 'internet_account_no', 'wifi_due_date', 'wifi_payment_status'],
     water: ['water_amount', 'water_account_no', 'water_due_date', 'water_payment_status'],
     electricity: ['electricity_amount', 'electricity_account_no', 'electricity_due_date', 'electricity_payment_status'],
     association_dues: ['association_dues', 'association_due_date']
@@ -203,6 +203,23 @@ function normalizeAmountValue(value) {
     return cleaned || raw;
 }
 
+function normalizePaymentStatusValue(value) {
+    const raw = cleanTextValue(value);
+    if (raw === '') {
+        return '';
+    }
+
+    const normalizedRaw = raw.replace(/\s+/g, ' ').trim();
+    const knownStatus = normalizedRaw.match(/\b(unpaid|paid|overdue|pending|partial)\b/i);
+    if (knownStatus && knownStatus[1]) {
+        const token = knownStatus[1].toLowerCase();
+        return token.charAt(0).toUpperCase() + token.slice(1);
+    }
+
+    const trimmed = normalizedRaw.split(/\b(?:reference|ref(?:erence)?\s*no\.?)\b/i)[0].trim();
+    return trimmed || normalizedRaw;
+}
+
 function extractUploadText(data) {
     if (!data || typeof data !== 'object') {
         return '';
@@ -243,7 +260,11 @@ function parseUploadFieldsFromText(text) {
         return {};
     }
 
-    const normalizedText = text.replace(/\s+/g, ' ');
+    const parsingText = text
+        .replace(/\r/g, '\n')
+        // OCR often glues tokens like "2026Due Date"; recover separators for pattern matching.
+        .replace(/([0-9])([A-Za-z])/g, '$1 $2');
+    const normalizedText = parsingText.replace(/\s+/g, ' ');
 
     const inferredBillType = (() => {
         const lowered = normalizedText.toLowerCase();
@@ -262,61 +283,38 @@ function parseUploadFieldsFromText(text) {
         return '';
     })();
 
-    const customerName = pickTextMatch(text, [/\bCustomer\s*Name[:\s-]*([^\n]+?)(?:\s+Business\s*Style[:\s-]|$)/i]);
-    const addressLine = pickTextMatch(text, [/\bAddress[:\s-]*([^\n]+?)(?:\s+TIN\s*\(|$)/i]);
+    const customerName = pickTextMatch(parsingText, [/\bCustomer\s*Name[:\s-]*([^\n]+?)(?:\s+Business\s*Style[:\s-]|$)/i]);
+    const addressLine = pickTextMatch(parsingText, [/\bAddress[:\s-]*([^\n]+?)(?:\s+TIN\s*\(|$)/i]);
     const propertyFromAddress = cleanTextValue(addressLine.split(',')[0] || '');
 
     return {
         bill_type:
-            pickTextMatch(text, [/\bBill\s*Type[:\s-]*([A-Za-z_ ]+)/i, /\bUtility\s*Type[:\s-]*([A-Za-z_ ]+)/i]) ||
+            pickTextMatch(parsingText, [/\bBill\s*Type[:\s-]*([A-Za-z_ ]+)/i, /\bUtility\s*Type[:\s-]*([A-Za-z_ ]+)/i]) ||
             inferredBillType,
         dd:
-            customerName || pickTextMatch(text, [/\bProperty\/DD[:\s-]*([A-Za-z0-9 -]+)/i, /\bDD[:\s-]*([A-Za-z0-9 -]+)/i]),
-        property: propertyFromAddress || pickTextMatch(text, [/\bProperty[:\s-]*([A-Za-z0-9 -]+)/i]),
-        internet_provider: pickTextMatch(text, [/\bInternet\s*Provider[:\s-]*([^\n]+)/i, /\bISP[:\s-]*([^\n]+)/i]),
-        internet_account_no: pickTextMatch(text, [
+            customerName || pickTextMatch(parsingText, [/\bProperty\/DD[:\s-]*([A-Za-z0-9 -]+)/i, /\bDD[:\s-]*([A-Za-z0-9 -]+)/i]),
+        property: propertyFromAddress || pickTextMatch(parsingText, [/\bProperty[:\s-]*([A-Za-z0-9 -]+)/i]),
+        internet_provider: pickTextMatch(parsingText, [/\bInternet\s*Provider[:\s-]*([^\n]+)/i, /\bISP[:\s-]*([^\n]+)/i, /\bProvider[:\s-]*([^\n]+)/i]),
+        internet_account_no: pickTextMatch(parsingText, [
             /\bInternet\s*Account\s*No\.?[:\s-]*([A-Za-z0-9-]+)/i,
             /\bCustomer\s*Acct\.?\s*No\.?[:\s-]*([A-Za-z0-9-]+)/i,
             /\bAccount\s*(?:No|Number)\.?\s*[:\s-]*([A-Za-z0-9-]+)/i
         ]),
-        wifi_amount: pickTextMatch(text, [/\bAmount\s*Due[:\s-]*([^\n]+)/i, /\bTotal(?:\s*Amount)?[:\s-]*([^\n]+)/i]),
-        wifi_due_date: pickTextMatch(text, [/\bDue\s*Date[:\s-]*([^\n]+)/i]),
-        wifi_payment_status: pickTextMatch(text, [/\bPayment\s*Status[:\s-]*([^\n]+)/i]),
-        water_account_no: pickTextMatch(text, [
+        wifi_amount: pickTextMatch(parsingText, [/\bAmount\s*Due[:\s-]*([^\n]+)/i, /\bTotal(?:\s*Amount)?[:\s-]*([^\n]+)/i]),
+        wifi_due_date: pickTextMatch(parsingText, [/\bDue\s*Date[:\s-]*([^\n]+)/i]),
+        wifi_payment_status: pickTextMatch(parsingText, [/\bPayment\s*Status[:\s-]*([^\n]+)/i]),
+        water_account_no: pickTextMatch(parsingText, [
             /\bWater\s*Account\s*No\.?[:\s-]*([A-Za-z0-9-]+)/i,
             /\bCustomer\s*Acct\.?\s*No\.?[:\s-]*([A-Za-z0-9-]+)/i
         ]),
-        water_amount: pickTextMatch(text, [
-            /\bTotal\s*Balance\s*Due[^\n]*?([0-9]{1,3}(?:[, ]?[0-9]{3})*(?:\.\d{2})|[0-9]+\.\d{2})/i,
-            /\bWater(?:\s*Amount)?[:\s-]*([^\n]+)/i,
+        water_amount: pickTextMatch(parsingText, [
             /\bWater\s*Cons(?:umption)?[^\n]*?([0-9]{1,3}(?:[, ]?[0-9]{3})*(?:\.\d{2})|[0-9]+\.\d{2})/i,
+            /\bWater(?:\s*Amount)?[^\n]*?([0-9]{1,3}(?:[, ]?[0-9]{3})*(?:\.\d{2})|[0-9]+\.\d{2})/i,
             /\bCurrent\s*Charges[^\n]*?([0-9]{1,3}(?:[, ]?[0-9]{3})*(?:\.\d{2})|[0-9]+\.\d{2})/i,
-            /\bAmount\s*Due[^\n]*?([0-9]{1,3}(?:[, ]?[0-9]{3})*(?:\.\d{2})|[0-9]+\.\d{2})/i
+            /\bAmount\s*Due[^\n]*?([0-9]{1,3}(?:[, ]?[0-9]{3})*(?:\.\d{2})|[0-9]+\.\d{2})/i,
+            /\bTotal\s*Balance\s*Due[^\n]*?([0-9]{1,3}(?:[, ]?[0-9]{3})*(?:\.\d{2})|[0-9]+\.\d{2})/i
         ]),
-        water_due_date: pickTextMatch(text, [
-            /\bCurrent\s*Bill\s*Due\s*Date[:\s-]*([^\n]+)/i,
-            /\bDue\s*Date[:\s-]*([^\n]+)/i,
-            /\bDue\s*Date\s*([A-Za-z]{3,9}\s+\d{1,2},?\s+\d{4})/i,
-            /\bCurrent\s*Bill\s*Due\s*Date[:\s-]*([0-9]{1,2}-[A-Za-z]{3}-[0-9]{4})/i,
-            /\bDue\s*Date[:\s-]*([0-9]{1,2}-[A-Za-z]{3}-[0-9]{4})/i
-        ]),
-        water_payment_status: pickTextMatch(text, [/\bPayment\s*Status[:\s-]*([^\n]+)/i]),
-        electricity_account_no: pickTextMatch(text, [
-            /\bElectricity\s*Account\s*No\.?[:\s-]*([A-Za-z0-9-]+)/i,
-            /\bCustomer\s*Acct\.?\s*No\.?[:\s-]*([A-Za-z0-9-]+)/i,
-            /\bCustomer\s*Acct\.?\s*No\.?\s*[:\s-]*([A-Za-z0-9-]+)/i,
-            /\bMeter\s*No\.?[:\s-]*([A-Za-z0-9-]+)/i
-        ]),
-        electricity_amount: pickTextMatch(text, [
-            /\bTOTAL\s*CURRENT\s*BILL\s*AMOUNT[^\d-]*([0-9][0-9,]*\.\d{2})/i,
-            /\bCurrent\s*Charges[^\d-]*([0-9][0-9,]*\.\d{2})/i,
-            /\bTotal\s*Amount\s*Due[^\d-]*([0-9][0-9,]*\.\d{2})/i,
-            /\bAmount\s*Due[^\d-]*([0-9][0-9,]*\.\d{2})/i
-        ]),
-        electricity_total_amount_due: pickTextMatch(text, [
-            /\bTotal\s*Amount\s*Due[^\d-]*([0-9]{1,3}(?:[,\s][0-9]{3})*(?:\.\d{2})|[0-9]+(?:\.\d{2}))/i
-        ]),
-        electricity_due_date: pickTextMatch(text, [
+        water_due_date: pickTextMatch(parsingText, [
             /\bCurrent\s*Bill\s*Due\s*Date[:\s-]*([0-9]{1,2}-[A-Za-z]{3}-[0-9]{4})/i,
             /\bDue\s*Date[:\s-]*([0-9]{1,2}-[A-Za-z]{3}-[0-9]{4})/i,
             /\bCurrent\s*Bill\s*Due\s*Date[:\s-]*([A-Za-z]{3,9}\s+\d{1,2},?\s+\d{4})/i,
@@ -327,18 +325,49 @@ function parseUploadFieldsFromText(text) {
             /\bCurrent\s*Bill\s*Due\s*Date[:\s-]*(\d{1,2}[/-]\d{1,2}[/-]\d{4})/i,
             /\bDue\s*Date[:\s-]*(\d{1,2}[/-]\d{1,2}[/-]\d{4})/i
         ]),
-        electricity_payment_status: pickTextMatch(text, [/\bPayment\s*Status[:\s-]*([^\n]+)/i]),
-        association_dues: pickTextMatch(text, [/\bAssociation\s*Dues[:\s-]*([^\n]+)/i]),
-        association_due_date: pickTextMatch(text, [
-            /\bCurrent\s*Bill\s*Due\s*Date[:\s-]*([^\n]+)/i,
-            /\bDue\s*Date[:\s-]*([^\n]+)/i,
+        water_payment_status: pickTextMatch(parsingText, [/\bPayment\s*Status[:\s-]*([^\n]+)/i]),
+        electricity_account_no: pickTextMatch(parsingText, [
+            /\bElectricity\s*Account\s*No\.?[:\s-]*([A-Za-z0-9-]+)/i,
+            /\bCustomer\s*Acct\.?\s*No\.?[:\s-]*([A-Za-z0-9-]+)/i,
+            /\bCustomer\s*Acct\.?\s*No\.?\s*[:\s-]*([A-Za-z0-9-]+)/i,
+            /\bMeter\s*No\.?[:\s-]*([A-Za-z0-9-]+)/i
+        ]),
+        electricity_amount: pickTextMatch(parsingText, [
+            /\bTOTAL\s*CURRENT\s*BILL\s*AMOUNT[^\d-]*([0-9][0-9,]*\.\d{2})/i,
+            /\bCurrent\s*Charges[^\d-]*([0-9][0-9,]*\.\d{2})/i,
+            /\bTotal\s*Amount\s*Due[^\d-]*([0-9][0-9,]*\.\d{2})/i,
+            /\bAmount\s*Due[^\d-]*([0-9][0-9,]*\.\d{2})/i
+        ]),
+        electricity_total_amount_due: pickTextMatch(parsingText, [
+            /\bTotal\s*Amount\s*Due[^\d-]*([0-9]{1,3}(?:[,\s][0-9]{3})*(?:\.\d{2})|[0-9]+(?:\.\d{2}))/i
+        ]),
+        electricity_due_date: pickTextMatch(parsingText, [
+            /\bCurrent\s*Bill\s*Due\s*Date[:\s-]*([0-9]{1,2}-[A-Za-z]{3}-[0-9]{4})/i,
+            /\bDue\s*Date[:\s-]*([0-9]{1,2}-[A-Za-z]{3}-[0-9]{4})/i,
             /\bCurrent\s*Bill\s*Due\s*Date[:\s-]*([A-Za-z]{3,9}\s+\d{1,2},?\s+\d{4})/i,
             /\bDue\s*Date[:\s-]*([A-Za-z]{3,9}\s+\d{1,2},?\s+\d{4})/i,
             /\bDue\s*Date\s+([A-Za-z]{3,9}\s+\d{1,2},?\s+\d{4})/i,
             /\bCurrent\s*Bill\s*Due\s*Date[:\s-]*(\d{4}-\d{2}-\d{2})/i,
-            /\bDue\s*Date[:\s-]*(\d{4}-\d{2}-\d{2})/i
+            /\bDue\s*Date[:\s-]*(\d{4}-\d{2}-\d{2})/i,
+            /\bCurrent\s*Bill\s*Due\s*Date[:\s-]*(\d{1,2}[/-]\d{1,2}[/-]\d{4})/i,
+            /\bDue\s*Date[:\s-]*(\d{1,2}[/-]\d{1,2}[/-]\d{4})/i
         ]),
-        association_payment_status: pickTextMatch(text, [/\bPayment\s*Status[:\s-]*([^\n]+)/i])
+        electricity_payment_status: pickTextMatch(parsingText, [/\bPayment\s*Status[:\s-]*([^\n]+)/i]),
+        association_dues: pickTextMatch(parsingText, [
+            /\bAssociation\s*Dues[^\n]*?([0-9]{1,3}(?:[, ]?[0-9]{3})*(?:\.\d{2})|[0-9]+\.\d{2})/i
+        ]),
+        association_due_date: pickTextMatch(parsingText, [
+            /\bCurrent\s*Bill\s*Due\s*Date[:\s-]*([0-9]{1,2}-[A-Za-z]{3}-[0-9]{4})/i,
+            /\bDue\s*Date[:\s-]*([0-9]{1,2}-[A-Za-z]{3}-[0-9]{4})/i,
+            /\bCurrent\s*Bill\s*Due\s*Date[:\s-]*([A-Za-z]{3,9}\s+\d{1,2},?\s+\d{4})/i,
+            /\bDue\s*Date[:\s-]*([A-Za-z]{3,9}\s+\d{1,2},?\s+\d{4})/i,
+            /\bDue\s*Date\s+([A-Za-z]{3,9}\s+\d{1,2},?\s+\d{4})/i,
+            /\bCurrent\s*Bill\s*Due\s*Date[:\s-]*(\d{4}-\d{2}-\d{2})/i,
+            /\bDue\s*Date[:\s-]*(\d{4}-\d{2}-\d{2})/i,
+            /\bCurrent\s*Bill\s*Due\s*Date[:\s-]*(\d{1,2}[/-]\d{1,2}[/-]\d{4})/i,
+            /\bDue\s*Date[:\s-]*(\d{1,2}[/-]\d{1,2}[/-]\d{4})/i
+        ]),
+        association_payment_status: pickTextMatch(parsingText, [/\bPayment\s*Status[:\s-]*([^\n]+)/i])
     };
 }
 
@@ -624,7 +653,8 @@ export function normalizeUploadData(input) {
             parsedFromText.wifi_amount || ''
         )
     );
-    const waterAmount = normalizeAmountValue(
+    const parsedWaterAmount = normalizeAmountValue(parsedFromText.water_amount || '');
+    const waterAmount = parsedWaterAmount || normalizeAmountValue(
         pickUploadValue(
             lookup,
             [
@@ -682,6 +712,34 @@ export function normalizeUploadData(input) {
     const associationDueDate = normalizeDateValue(
         pickUploadValue(lookup, ['association_due_date', 'associationDueDate'], parsedFromText.association_due_date || '')
     );
+    const wifiPaymentStatus = normalizePaymentStatusValue(
+        pickUploadValue(
+            lookup,
+            ['wifi_payment_status', 'wifiPaymentStatus', 'payment_status'],
+            parsedFromText.wifi_payment_status || ''
+        )
+    );
+    const waterPaymentStatus = normalizePaymentStatusValue(
+        pickUploadValue(
+            lookup,
+            ['water_payment_status', 'waterPaymentStatus', 'payment_status'],
+            parsedFromText.water_payment_status || ''
+        )
+    );
+    const electricityPaymentStatus = normalizePaymentStatusValue(
+        pickUploadValue(
+            lookup,
+            ['electricity_payment_status', 'electricityPaymentStatus', 'payment_status'],
+            parsedFromText.electricity_payment_status || ''
+        )
+    );
+    const associationPaymentStatus = normalizePaymentStatusValue(
+        pickUploadValue(
+            lookup,
+            ['association_payment_status', 'associationPaymentStatus', 'payment_status'],
+            parsedFromText.association_payment_status || ''
+        )
+    );
     const billingPeriod = normalizeBillingPeriodValue(
         pickUploadValue(
             lookup,
@@ -728,12 +786,7 @@ export function normalizeUploadData(input) {
         wifi_due_date: normalizeDateValue(
             pickUploadValue(lookup, ['wifi_due_date', 'wifiDueDate', 'internet_due_date'], parsedFromText.wifi_due_date || '')
         ),
-        wifi_payment_status:
-            pickUploadValue(
-                lookup,
-                ['wifi_payment_status', 'wifiPaymentStatus', 'payment_status'],
-                parsedFromText.wifi_payment_status || ''
-            ) || (wifiAmount !== '' ? 'Unpaid' : ''),
+        wifi_payment_status: wifiPaymentStatus || (wifiAmount !== '' ? 'Unpaid' : ''),
         water_account_no: pickUploadValue(
             lookup,
             ['water_account_no', 'waterAccountNo', 'wateracctno', 'wateracctnumber'],
@@ -747,12 +800,7 @@ export function normalizeUploadData(input) {
                 parsedFromText.water_due_date || ''
             )
         ),
-        water_payment_status:
-            pickUploadValue(
-                lookup,
-                ['water_payment_status', 'waterPaymentStatus', 'payment_status'],
-                parsedFromText.water_payment_status || ''
-            ) || (waterAmount !== '' ? 'Unpaid' : ''),
+        water_payment_status: waterPaymentStatus || (waterAmount !== '' ? 'Unpaid' : ''),
         electricity_account_no:
             parsedFromText.electricity_account_no ||
             pickUploadValue(
@@ -762,20 +810,10 @@ export function normalizeUploadData(input) {
             ),
         electricity_amount: electricityAmount,
         electricity_due_date: electricityDueDate,
-        electricity_payment_status:
-            pickUploadValue(
-                lookup,
-                ['electricity_payment_status', 'electricityPaymentStatus', 'payment_status'],
-                parsedFromText.electricity_payment_status || ''
-            ) || (electricityAmount !== '' ? 'Unpaid' : ''),
+        electricity_payment_status: electricityPaymentStatus || (electricityAmount !== '' ? 'Unpaid' : ''),
         association_dues: associationDues,
         association_due_date: associationDueDate,
-        association_payment_status:
-            pickUploadValue(
-                lookup,
-                ['association_payment_status', 'associationPaymentStatus', 'payment_status'],
-                parsedFromText.association_payment_status || ''
-            ) || (associationDues !== '' ? 'Unpaid' : ''),
+        association_payment_status: associationPaymentStatus || (associationDues !== '' ? 'Unpaid' : ''),
         total_amount_due: normalizedTotalAmountDue,
         real_property_tax: normalizeAmountValue(pickUploadValue(lookup, ['real_property_tax', 'realPropertyTax'])),
         rpt_payment_status: pickUploadValue(lookup, ['rpt_payment_status', 'rptPaymentStatus']),

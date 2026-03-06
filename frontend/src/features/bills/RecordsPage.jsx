@@ -114,6 +114,50 @@ const BILL_VIEW_OPTIONS = [
   ['association', 'Association']
 ];
 
+function BillViewIcon({ viewKey }) {
+  if (viewKey === 'all') {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <rect x="4" y="5" width="16" height="14" rx="2.2" />
+        <path strokeLinecap="round" d="M8 9h8M8 12h8M8 15h5" />
+      </svg>
+    );
+  }
+  if (viewKey === 'water') {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 3.5c3.6 4.1 6 7 6 10a6 6 0 1 1-12 0c0-3 2.4-5.9 6-10z" />
+      </svg>
+    );
+  }
+  if (viewKey === 'electricity') {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13 2.5L5.8 12H12l-1 9.5L18.2 12H12.8L13 2.5z" />
+      </svg>
+    );
+  }
+  if (viewKey === 'wifi') {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <path strokeLinecap="round" d="M3.5 9.5A12.5 12.5 0 0 1 20.5 9.5" />
+        <path strokeLinecap="round" d="M6.8 12.8a8 8 0 0 1 10.4 0" />
+        <path strokeLinecap="round" d="M10.1 16.1a3.4 3.4 0 0 1 3.8 0" />
+        <circle cx="12" cy="19" r="1.2" fill="currentColor" stroke="none" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <circle cx="8" cy="9" r="2.2" />
+      <circle cx="16" cy="9" r="2.2" />
+      <path strokeLinecap="round" d="M4.5 18c.6-2 2.1-3.2 3.5-3.2h0c1.4 0 2.9 1.2 3.5 3.2" />
+      <path strokeLinecap="round" d="M12.5 18c.6-2 2.1-3.2 3.5-3.2h0c1.4 0 2.9 1.2 3.5 3.2" />
+    </svg>
+  );
+}
+
 function resolveBillTypeFromRow(row, billView) {
   const viewType = BILL_VIEW_TO_TYPE[billView] || '';
   if (viewType) {
@@ -592,7 +636,6 @@ export default function RecordsPage() {
   return (
     <AppLayout
       title="Bills Records"
-      subtitle="Search, review, and export billing records."
       contentClassName="shell-content-lock-scroll"
     >
       <Toast toasts={toasts} onDismiss={removeToast} />
@@ -609,6 +652,9 @@ export default function RecordsPage() {
               onClick={() => handleBillViewChange(key)}
             >
               <span className="bills-step-index">{index + 1}</span>
+              <span className="bills-step-icon" aria-hidden="true">
+                <BillViewIcon viewKey={key} />
+              </span>
               <span>{label}</span>
             </button>
           ))}
@@ -627,11 +673,6 @@ export default function RecordsPage() {
             {exporting ? 'Exporting...' : 'Export'}
           </button>
         </div>
-        <p className="muted-text records-helper-text">
-          Tip: select one row then click <span className="value-emphasis">Edit</span>, or double-click a row to open it
-          immediately.
-        </p>
-
         {isLoading && <p>Loading records...</p>}
         {isError && <p className="error">{error.message}</p>}
 
@@ -679,9 +720,14 @@ export default function RecordsPage() {
             </div>
 
             <div className="pagination records-pagination">
-              <span>
-                Showing {pageStart}-{pageEnd} of {totalRows}
-              </span>
+              <div className="records-pagination-meta">
+                <button type="button" className="btn btn-secondary" onClick={() => navigate('/records')}>
+                  Back
+                </button>
+                <span>
+                  Showing {pageStart}-{pageEnd} of {totalRows}
+                </span>
+              </div>
               <div className="actions">
                 <button
                   type="button"

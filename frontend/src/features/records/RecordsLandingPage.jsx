@@ -8,7 +8,7 @@ export default function RecordsLandingPage() {
   const navigate = useNavigate();
 
   return (
-    <AppLayout title="Records" subtitle="Open billing records or expenses records.">
+    <AppLayout title="Records">
       <section className="card records-landing-card">
         <div className="records-choice-grid">
           <article className="records-choice-card">
@@ -28,7 +28,6 @@ export default function RecordsLandingPage() {
             >
               Bills Records
             </button>
-            <p className="records-choice-caption">Manage your billing records</p>
           </article>
 
           <article className="records-choice-card">
@@ -52,7 +51,6 @@ export default function RecordsLandingPage() {
             >
               Expenses Records
             </button>
-            <p className="records-choice-caption">Track your expenses</p>
           </article>
         </div>
       </section>

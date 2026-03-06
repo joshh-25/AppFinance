@@ -11,7 +11,9 @@ Use this checklist before each production release.
 - Run `php -l` for changed PHP files.
 - Run `composer test`.
 - Run `npm.cmd run test -- --run` in `frontend/`.
+- Run `node infra/scripts/validate-ocr-parser-samples.mjs --check` from repo root.
 - Run `npm.cmd run build` in `frontend/`.
+- Run `node infra/scripts/check-frontend-build-freshness.mjs` from repo root.
 - Run `php backend/tools/run_migrations.php` in staging or pre-prod.
 
 ## 3. Database Safety

@@ -5,6 +5,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import AppLayout from '../../shared/components/AppLayout.jsx';
+import ReelsSkeletonLoader from '../../shared/components/ReelsSkeletonLoader.jsx';
 import { fetchBills } from '../../shared/lib/api.js';
 
 const MODULE_AMOUNT_STATUS_FIELDS = [
@@ -57,23 +58,6 @@ function formatCurrency(value) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   }).format(value);
-}
-
-function formatBillingPeriod(period) {
-  const text = String(period ?? '').trim();
-  const match = text.match(/^(\d{4})-(\d{2})$/);
-  if (!match) {
-    return text || '-';
-  }
-  const year = Number.parseInt(match[1], 10);
-  const month = Number.parseInt(match[2], 10);
-  if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) {
-    return text;
-  }
-  return new Date(year, month - 1, 1).toLocaleDateString('en-US', {
-    month: 'long',
-    year: 'numeric'
-  });
 }
 
 function formatBillType(type) {
@@ -139,9 +123,8 @@ export default function DashboardPage() {
     queryFn: fetchBills
   });
 
-  const currentBillingPeriod = new Date().toISOString().slice(0, 7);
-
   const dashboardData = useMemo(() => {
+    const currentBillingPeriod = new Date().toISOString().slice(0, 7);
     const currentMonthRows = records.filter((row) => {
       const createdAt = String(row.created_at || '').trim();
       if (createdAt === '') {
@@ -172,42 +155,38 @@ export default function DashboardPage() {
       currentMonthCount: currentMonthRows.length,
       recentRows
     };
-  }, [records, currentBillingPeriod]);
+  }, [records]);
+
+  if (isLoading) {
+    return <ReelsSkeletonLoader />;
+  }
 
   return (
-    <AppLayout
-      title="Dashboard"
-      subtitle="View this month's billed totals, pending collections, and recent billing activity."
-    >
+    <AppLayout title="Dashboard">
       <section className="kpi-grid">
         <article className="card kpi-card total-kpi-card">
           <p className="kpi-label">Total Billed This Month</p>
           <p className="kpi-value">{formatCurrency(dashboardData.totalBilled)}</p>
-          <p className="muted-text">Sum of all modules below</p>
         </article>
 
         <article className="card kpi-card">
           <p className="kpi-label">Total WiFi</p>
           <p className="kpi-value">{formatCurrency(dashboardData.wifiTotal)}</p>
-          <p className="muted-text">{formatBillingPeriod(currentBillingPeriod)}</p>
         </article>
 
         <article className="card kpi-card">
           <p className="kpi-label">Total Water</p>
           <p className="kpi-value">{formatCurrency(dashboardData.waterTotal)}</p>
-          <p className="muted-text">{formatBillingPeriod(currentBillingPeriod)}</p>
         </article>
 
         <article className="card kpi-card">
           <p className="kpi-label">Total Electricity</p>
           <p className="kpi-value">{formatCurrency(dashboardData.electricityTotal)}</p>
-          <p className="muted-text">{formatBillingPeriod(currentBillingPeriod)}</p>
         </article>
 
         <article className="card kpi-card">
           <p className="kpi-label">Total Association Dues</p>
           <p className="kpi-value">{formatCurrency(dashboardData.associationDuesTotal)}</p>
-          <p className="muted-text">{formatBillingPeriod(currentBillingPeriod)}</p>
         </article>
       </section>
 
@@ -216,7 +195,6 @@ export default function DashboardPage() {
           <div className="card-title-row">
             <div className="card-title-left">
               <h3>Recent Activity</h3>
-              <p className="muted-text">Latest billing records across modules.</p>
             </div>
             <div className="card-title-actions">
               <button type="button" className="btn btn-secondary" onClick={() => navigate('/records')}>
@@ -225,7 +203,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {isLoading && <p>Loading dashboard data...</p>}
           {isError && <p className="error">{error?.message || 'Failed to load dashboard data.'}</p>}
 
           {!isLoading && !isError && dashboardData.recentRows.length === 0 && (
@@ -269,7 +246,6 @@ export default function DashboardPage() {
 
         <article className="card dashboard-quick-actions">
           <h3>Quick Actions</h3>
-          <p className="muted-text">Jump to key workflows.</p>
           <div className="actions">
             <button type="button" className="btn btn-secondary" onClick={() => navigate('/property-records')}>
               Property Records

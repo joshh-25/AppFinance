@@ -191,6 +191,192 @@ function map_account_lookup_row_for_response($row)
     return $mapped;
 }
 
+function collect_unique_account_lookup_candidates($rows)
+{
+    if (!is_array($rows) || count($rows) === 0) {
+        return [];
+    }
+
+    $unique = [];
+    foreach ($rows as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+
+        $propertyName = normalize_account_lookup_property_name(
+            $row['property'] ?? $row['pl_property'] ?? $row['property_name'] ?? ''
+        );
+        if ($propertyName === '') {
+            continue;
+        }
+
+        $candidateKey = strtolower($propertyName);
+        $propertyListId = (int) ($row['property_list_id'] ?? $row['pl_id'] ?? 0);
+        $utilityType = normalize_account_lookup_utility_type($row['utility_type'] ?? '');
+        $dd = normalize_account_lookup_text($row['dd'] ?? $row['pl_dd'] ?? '');
+        $accountNumberRaw = normalize_account_lookup_text($row['account_number_raw'] ?? '');
+        $accountNumberNormalized = normalize_account_lookup_account_number(
+            $row['account_number_normalized'] ?? $row['account_number_raw'] ?? ''
+        );
+
+        if (!isset($unique[$candidateKey])) {
+            $unique[$candidateKey] = [
+                'property' => $propertyName,
+                'property_list_id' => $propertyListId > 0 ? $propertyListId : 0,
+                'utility_type' => $utilityType,
+                'dd' => $dd,
+                'account_number_raw' => $accountNumberRaw,
+                'account_number_normalized' => $accountNumberNormalized,
+            ];
+            continue;
+        }
+
+        if ((int) $unique[$candidateKey]['property_list_id'] <= 0 && $propertyListId > 0) {
+            $unique[$candidateKey]['property_list_id'] = $propertyListId;
+        }
+        if ((string) $unique[$candidateKey]['dd'] === '' && $dd !== '') {
+            $unique[$candidateKey]['dd'] = $dd;
+        }
+        if ((string) $unique[$candidateKey]['account_number_raw'] === '' && $accountNumberRaw !== '') {
+            $unique[$candidateKey]['account_number_raw'] = $accountNumberRaw;
+        }
+        if ((string) $unique[$candidateKey]['account_number_normalized'] === '' && $accountNumberNormalized !== '') {
+            $unique[$candidateKey]['account_number_normalized'] = $accountNumberNormalized;
+        }
+    }
+
+    return array_values($unique);
+}
+
+function resolve_account_lookup_candidates($rows)
+{
+    $candidates = collect_unique_account_lookup_candidates($rows);
+    $candidateCount = count($candidates);
+
+    if ($candidateCount === 0) {
+        return [
+            'match_status' => 'none',
+            'candidate_count' => 0,
+            'candidate' => null,
+            'candidates' => [],
+        ];
+    }
+
+    if ($candidateCount === 1) {
+        return [
+            'match_status' => 'matched',
+            'candidate_count' => 1,
+            'candidate' => $candidates[0],
+            'candidates' => $candidates,
+        ];
+    }
+
+    return [
+        'match_status' => 'needs_review',
+        'candidate_count' => $candidateCount,
+        'candidate' => null,
+        'candidates' => $candidates,
+    ];
+}
+
+function build_account_lookup_needs_review_payload($accountNumber, $normalizedAccount, $utilityType, $billingMonth, $resolution)
+{
+    return [
+        'success' => true,
+        'message' => 'Multiple properties match this account number. Manual review is required.',
+        'data' => [
+            'match_status' => 'needs_review',
+            'reason' => 'ambiguous_account_number',
+            'account_number_raw' => normalize_account_lookup_text($accountNumber),
+            'account_number_normalized' => (string) $normalizedAccount,
+            'utility_type' => (string) $utilityType,
+            'billing_period' => (string) $billingMonth,
+            'candidate_count' => (int) ($resolution['candidate_count'] ?? 0),
+            'candidates' => array_values($resolution['candidates'] ?? []),
+        ],
+    ];
+}
+
+function find_property_matches_from_property_account_directory($pdo, $normalizedAccount, $utilityType = '')
+{
+    if ($normalizedAccount === '') {
+        return [];
+    }
+    if (!function_exists('table_exists') || !table_exists($pdo, 'property_account_directory')) {
+        return [];
+    }
+
+    $utilityFieldMap = [
+        'electricity' => 'electricity_account_no',
+        'water' => 'water_account_no',
+        'internet' => 'wifi_account_no',
+    ];
+
+    $candidateFields = [];
+    if ($utilityType !== '' && isset($utilityFieldMap[$utilityType])) {
+        $candidateFields[] = [$utilityType, $utilityFieldMap[$utilityType]];
+    } else {
+        $candidateFields[] = ['electricity', $utilityFieldMap['electricity']];
+        $candidateFields[] = ['water', $utilityFieldMap['water']];
+        $candidateFields[] = ['internet', $utilityFieldMap['internet']];
+    }
+
+    $stmt = $pdo->query(
+        "SELECT `id`, `property`, `property_list_id`, `electricity_account_no`, `water_account_no`, `wifi_account_no`
+         FROM `property_account_directory`
+         ORDER BY `property` ASC, `id` ASC"
+    );
+    $rows = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+
+    $matches = [];
+    $seen = [];
+    foreach ($rows as $row) {
+        $propertyName = normalize_account_lookup_property_name($row['property'] ?? '');
+        if ($propertyName === '') {
+            continue;
+        }
+
+        foreach ($candidateFields as $candidate) {
+            $candidateUtility = $candidate[0];
+            $candidateField = $candidate[1];
+            $rawAccount = normalize_account_lookup_text($row[$candidateField] ?? '');
+            if ($rawAccount === '') {
+                continue;
+            }
+            $candidateNormalized = normalize_account_lookup_account_number($rawAccount);
+            if ($candidateNormalized === '' || $candidateNormalized !== $normalizedAccount) {
+                continue;
+            }
+
+            $matchKey = strtolower($propertyName) . '|' . $candidateUtility;
+            if (isset($seen[$matchKey])) {
+                continue;
+            }
+            $seen[$matchKey] = true;
+
+            $matches[] = [
+                'property_name' => $propertyName,
+                'property' => $propertyName,
+                'property_list_id' => (int) ($row['property_list_id'] ?? 0),
+                'utility_type' => $candidateUtility,
+                'account_number_raw' => $rawAccount,
+                'account_number_normalized' => $candidateNormalized,
+            ];
+        }
+    }
+
+    return $matches;
+}
+
+function find_property_from_property_account_directory($pdo, $normalizedAccount, $utilityType = '')
+{
+    $matches = find_property_matches_from_property_account_directory($pdo, $normalizedAccount, $utilityType);
+    if (count($matches) === 0) {
+        return null;
+    }
+    return $matches[0];
+}
+
 function handle_account_lookup_actions($action)
 {
     if ($action === 'account_lookup_import' && $_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -381,7 +567,80 @@ function handle_account_lookup_actions($action)
             $stmt->execute($params);
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
             if (count($rows) === 0) {
-                echo json_encode(['success' => false, 'message' => 'No matching property found for this account number.']);
+                $fallbackMatches = find_property_matches_from_property_account_directory($pdo, $normalizedAccount, $utilityType);
+                if (count($fallbackMatches) === 0) {
+                    echo json_encode(['success' => false, 'message' => 'No matching property found for this account number.']);
+                    return true;
+                }
+
+                $fallbackResolution = resolve_account_lookup_candidates($fallbackMatches);
+                if (($fallbackResolution['match_status'] ?? '') === 'needs_review') {
+                    echo json_encode(
+                        build_account_lookup_needs_review_payload(
+                            $accountNumber,
+                            $normalizedAccount,
+                            $utilityType,
+                            $billingMonth,
+                            $fallbackResolution
+                        )
+                    );
+                    return true;
+                }
+
+                $fallbackMatch = $fallbackResolution['candidate'] ?? $fallbackMatches[0];
+                $fallbackRow = [
+                    'id' => 0,
+                    'account_number_raw' => (string) ($fallbackMatch['account_number_raw'] ?? ''),
+                    'account_number_normalized' => (string) ($fallbackMatch['account_number_normalized'] ?? ''),
+                    'utility_type' => (string) ($fallbackMatch['utility_type'] ?? $utilityType),
+                    'property_name' => (string) ($fallbackMatch['property'] ?? $fallbackMatch['property_name'] ?? ''),
+                    'billing_month' => $billingMonth,
+                    'source_file' => 'property_account_directory',
+                    'sheet_name' => '',
+                    'property_list_id' => null,
+                ];
+
+                $resolved = find_property_record_for_account_lookup(
+                    $pdo,
+                    $fallbackRow['property_name'],
+                    $billingMonth
+                );
+                if ($resolved) {
+                    $fallbackRow['pl_id'] = $resolved['id'] ?? null;
+                    $fallbackRow['pl_dd'] = $resolved['dd'] ?? '';
+                    $fallbackRow['pl_property'] = $resolved['property'] ?? '';
+                    $fallbackRow['pl_billing_period'] = $resolved['billing_period'] ?? '';
+                    $fallbackRow['pl_unit_owner'] = $resolved['unit_owner'] ?? '';
+                    $fallbackRow['pl_classification'] = $resolved['classification'] ?? '';
+                    $fallbackRow['pl_deposit'] = $resolved['deposit'] ?? '';
+                    $fallbackRow['pl_rent'] = $resolved['rent'] ?? '';
+                    $fallbackRow['pl_per_property_status'] = $resolved['per_property_status'] ?? '';
+                    $fallbackRow['pl_real_property_tax'] = $resolved['real_property_tax'] ?? '';
+                    $fallbackRow['pl_rpt_payment_status'] = $resolved['rpt_payment_status'] ?? '';
+                    $fallbackRow['pl_penalty'] = $resolved['penalty'] ?? '';
+                }
+
+                $mappedFallback = map_account_lookup_row_for_response($fallbackRow);
+                $mappedFallback['match_status'] = 'matched';
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Matching property found.',
+                    'data' => $mappedFallback,
+                ]);
+                return true;
+            }
+
+            $directoryResolution = resolve_account_lookup_candidates($rows);
+            if (($directoryResolution['match_status'] ?? '') === 'needs_review') {
+                echo json_encode(
+                    build_account_lookup_needs_review_payload(
+                        $accountNumber,
+                        $normalizedAccount,
+                        $utilityType,
+                        $billingMonth,
+                        $directoryResolution
+                    )
+                );
                 return true;
             }
 
@@ -405,6 +664,7 @@ function handle_account_lookup_actions($action)
             }
 
             $mapped = map_account_lookup_row_for_response($best);
+            $mapped['match_status'] = 'matched';
             echo json_encode([
                 'success' => true,
                 'message' => 'Matching property found.',
@@ -419,4 +679,3 @@ function handle_account_lookup_actions($action)
 
     return false;
 }
-

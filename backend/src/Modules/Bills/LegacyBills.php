@@ -80,6 +80,88 @@ function escape_like_pattern($value)
     ]);
 }
 
+function create_bill_upload_request_id()
+{
+    try {
+        return bin2hex(random_bytes(8));
+    } catch (Exception $error) {
+        return str_replace('.', '', uniqid('upload', true));
+    }
+}
+
+function sanitize_bill_upload_log_value($value, $maxLength = 200)
+{
+    $normalized = trim((string) $value);
+    if ($normalized === '') {
+        return '';
+    }
+    $normalized = strip_tags($normalized);
+    $normalized = preg_replace('/\s+/', ' ', $normalized);
+    if (!is_string($normalized) || $normalized === '') {
+        return '';
+    }
+    return substr($normalized, 0, max(1, (int) $maxLength));
+}
+
+function extract_bill_upload_error_summary($responseBody)
+{
+    $decoded = json_decode((string) $responseBody, true);
+    if (!is_array($decoded)) {
+        return 'Upstream service returned a non-JSON error payload.';
+    }
+
+    $parts = [];
+    if (!empty($decoded['errorDescription'])) {
+        $parts[] = sanitize_bill_upload_log_value($decoded['errorDescription']);
+    }
+    if (!empty($decoded['errorMessage'])) {
+        $parts[] = sanitize_bill_upload_log_value($decoded['errorMessage']);
+    }
+    if (isset($decoded['errorDetails']['rawErrorMessage'])) {
+        $raw = $decoded['errorDetails']['rawErrorMessage'];
+        if (is_array($raw)) {
+            $parts[] = sanitize_bill_upload_log_value(implode(' | ', $raw));
+        } elseif (is_string($raw)) {
+            $parts[] = sanitize_bill_upload_log_value($raw);
+        }
+    }
+
+    $parts = array_values(array_filter($parts, static function ($value) {
+        return is_string($value) && trim($value) !== '';
+    }));
+
+    if (!$parts) {
+        return 'Upstream service returned an unstructured JSON error payload.';
+    }
+
+    return substr(implode(' | ', $parts), 0, 220);
+}
+
+function log_bill_upload_error($requestId, $event, $context = [])
+{
+    $parts = [
+        'Finance API n8n upload error',
+        'request_id=' . sanitize_bill_upload_log_value($requestId, 40),
+        'event=' . sanitize_bill_upload_log_value($event, 40),
+    ];
+
+    if (is_array($context)) {
+        foreach ($context as $key => $value) {
+            $cleanKey = preg_replace('/[^a-z0-9_]/i', '', (string) $key);
+            if ($cleanKey === '') {
+                continue;
+            }
+            $cleanValue = sanitize_bill_upload_log_value($value, 220);
+            if ($cleanValue === '') {
+                continue;
+            }
+            $parts[] = $cleanKey . '=' . $cleanValue;
+        }
+    }
+
+    error_log(implode(' ', $parts));
+}
+
 function build_bill_list_filters()
 {
     $whereParts = ['b.`is_hidden` = 0'];
@@ -502,6 +584,8 @@ function handle_bill_actions($action)
     }
 
     if ($action === 'upload_bill' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $uploadRequestId = create_bill_upload_request_id();
+
         if (!isset($_FILES['bill_file']) || $_FILES['bill_file']['error'] !== UPLOAD_ERR_OK) {
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'No file uploaded or upload error']);
@@ -635,8 +719,13 @@ function handle_bill_actions($action)
 
         $ch = curl_init($n8n_webhook_url);
         if ($ch === false) {
+            log_bill_upload_error($uploadRequestId, 'curl_init_failed');
             http_response_code(500);
-            echo json_encode(['success' => false, 'message' => 'Failed to initialize upload handler.']);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Failed to initialize upload handler.',
+                'request_id' => $uploadRequestId,
+            ]);
             return true;
         }
         curl_setopt($ch, CURLOPT_POST, 1);
@@ -652,51 +741,32 @@ function handle_bill_actions($action)
         curl_close($ch);
 
         if ($response === false) {
-            error_log('Finance API n8n upload error: ' . $curl_error);
+            log_bill_upload_error($uploadRequestId, 'network_error', [
+                'details' => $curl_error,
+            ]);
             http_response_code(502);
             echo json_encode([
                 'success' => false,
                 'message' => 'Unable to reach document processing service.',
-                'details' => $curl_error !== '' ? $curl_error : 'No response from webhook.',
+                'details' => 'No response from webhook.',
+                'request_id' => $uploadRequestId,
             ]);
             return true;
         }
 
         if ($http_status < 200 || $http_status >= 300) {
-            error_log('Finance API n8n upload non-2xx: status=' . $http_status . ' body=' . $response);
-            $responseDetail = '';
-            $decodedError = json_decode((string) $response, true);
-            if (is_array($decodedError)) {
-                $parts = [];
-                if (!empty($decodedError['errorDescription'])) {
-                    $parts[] = trim((string) $decodedError['errorDescription']);
-                }
-                if (!empty($decodedError['errorMessage'])) {
-                    $parts[] = trim((string) $decodedError['errorMessage']);
-                }
-                if (isset($decodedError['errorDetails']['rawErrorMessage'])) {
-                    $raw = $decodedError['errorDetails']['rawErrorMessage'];
-                    if (is_array($raw)) {
-                        $parts[] = trim((string) implode(' | ', $raw));
-                    } elseif (is_string($raw)) {
-                        $parts[] = trim($raw);
-                    }
-                }
-                if (!empty($parts)) {
-                    $responseDetail = implode(' | ', array_filter($parts, static function ($value) {
-                        return $value !== '';
-                    }));
-                }
-            }
-            if ($responseDetail === '') {
-                $responseDetail = substr(trim((string) $response), 0, 280);
-            }
+            $responseDetail = extract_bill_upload_error_summary($response);
+            log_bill_upload_error($uploadRequestId, 'non_2xx', [
+                'status' => (string) $http_status,
+                'summary' => $responseDetail,
+            ]);
             http_response_code(502);
             echo json_encode([
                 'success' => false,
                 'message' => 'Document processing service returned an error.',
                 'status_code' => $http_status,
                 'details' => $responseDetail,
+                'request_id' => $uploadRequestId,
             ]);
             return true;
         }
@@ -752,11 +822,15 @@ function handle_bill_actions($action)
 
         // Treat empty or HTML 200 responses as upstream errors instead of successful scans.
         if ($trimmedResponse === '' || preg_match('/^\s*(?:<!doctype\s+html|<html\b)/i', $trimmedResponse)) {
-            error_log('Finance API n8n upload invalid JSON response: ' . substr($trimmedResponse, 0, 280));
+            log_bill_upload_error($uploadRequestId, 'invalid_response_format', [
+                'status' => (string) $http_status,
+                'summary' => $trimmedResponse === '' ? 'empty response body' : 'html response body',
+            ]);
             http_response_code(502);
             echo json_encode([
                 'success' => false,
                 'message' => 'Document processing service returned an invalid response format.',
+                'request_id' => $uploadRequestId,
             ]);
             return true;
         }

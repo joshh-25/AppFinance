@@ -714,7 +714,6 @@ export default function PropertyRecordsPage() {
   return (
     <AppLayout
       title="Property Records"
-      subtitle="Manage per-property records used by billing modules."
       contentClassName="shell-content-lock-scroll"
       onNavigateAttempt={unsavedGuard.handleNavigateAttempt}
     >

@@ -1,7 +1,7 @@
 // Finance App File: frontend/src/features/expenses/ExpensesPage.jsx
 // Purpose: Expenses create/update form page.
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import AppLayout from '../../shared/components/AppLayout.jsx';
@@ -71,13 +71,10 @@ export default function ExpensesPage() {
   const { toasts, showToast, removeToast } = useToast();
   const ocrInputRef = useRef(null);
   const [form, setForm] = useState(INITIAL_FORM);
-  const [baselineForm, setBaselineForm] = useState(INITIAL_FORM);
   const [editingExpenseId, setEditingExpenseId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [ocrBusy, setOcrBusy] = useState(false);
   const isEditMode = editingExpenseId !== null;
-  const isDirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(baselineForm), [form, baselineForm]);
-
   useEffect(() => {
     const raw = window.sessionStorage.getItem(EXPENSE_EDIT_CONTEXT_KEY);
     if (!raw) {
@@ -98,7 +95,6 @@ export default function ExpensesPage() {
       const nextForm = mapEditContextToForm(parsed);
       setEditingExpenseId(editId);
       setForm(nextForm);
-      setBaselineForm(nextForm);
     } catch {
       window.sessionStorage.removeItem(EXPENSE_EDIT_CONTEXT_KEY);
     }
@@ -112,7 +108,6 @@ export default function ExpensesPage() {
   function resetForm() {
     setEditingExpenseId(null);
     setForm(INITIAL_FORM);
-    setBaselineForm(INITIAL_FORM);
     window.sessionStorage.removeItem(EXPENSE_EDIT_CONTEXT_KEY);
   }
 
@@ -207,7 +202,7 @@ export default function ExpensesPage() {
   }
 
   return (
-    <AppLayout title="Expenses" subtitle="Create and update expense entries.">
+    <AppLayout title="Expenses">
       <Toast toasts={toasts} onDismiss={removeToast} />
       <section className="card bill-form-card expense-form-card">
         <div className="card-title-row">
@@ -217,7 +212,6 @@ export default function ExpensesPage() {
               <h3 className="card-title">
                 Expenses Form <span className="mode-badge">{isEditMode ? 'Edit Mode' : 'Create Mode'}</span>
               </h3>
-              {isDirty && <p className="muted-text">Unsaved changes.</p>}
             </div>
           </div>
           <div className="card-title-actions">

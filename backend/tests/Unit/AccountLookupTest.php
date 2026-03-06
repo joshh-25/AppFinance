@@ -33,5 +33,50 @@ final class AccountLookupTest extends TestCase
         $this->assertSame('2026-03', normalize_account_lookup_billing_month('2026/3'));
         $this->assertSame('', normalize_account_lookup_billing_month('invalid-value'));
     }
-}
 
+    public function testResolveAccountLookupCandidatesReturnsMatchedForSingleProperty(): void
+    {
+        $resolution = resolve_account_lookup_candidates([
+            [
+                'property_name' => 'Lafayette',
+                'property_list_id' => 10,
+                'utility_type' => 'water',
+                'account_number_raw' => 'WTR-001',
+            ],
+            [
+                'property_name' => ' lafayette ',
+                'property_list_id' => 0,
+                'utility_type' => 'water',
+                'account_number_raw' => 'WTR001',
+            ],
+        ]);
+
+        $this->assertSame('matched', $resolution['match_status']);
+        $this->assertSame(1, $resolution['candidate_count']);
+        $this->assertSame('Lafayette', $resolution['candidate']['property']);
+        $this->assertSame(10, $resolution['candidate']['property_list_id']);
+    }
+
+    public function testResolveAccountLookupCandidatesReturnsNeedsReviewForAmbiguousProperty(): void
+    {
+        $resolution = resolve_account_lookup_candidates([
+            [
+                'property_name' => 'Lafayette',
+                'property_list_id' => 10,
+                'utility_type' => 'water',
+                'account_number_raw' => 'WTR-001',
+            ],
+            [
+                'property_name' => 'Oak Residence',
+                'property_list_id' => 22,
+                'utility_type' => 'water',
+                'account_number_raw' => 'WTR-001',
+            ],
+        ]);
+
+        $this->assertSame('needs_review', $resolution['match_status']);
+        $this->assertSame(2, $resolution['candidate_count']);
+        $this->assertNull($resolution['candidate']);
+        $this->assertCount(2, $resolution['candidates']);
+    }
+}

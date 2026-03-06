@@ -10,12 +10,14 @@ import WifiBillsPage from '../WifiBillsPage.jsx';
 import ElectricityBillsPage from '../ElectricityBillsPage.jsx';
 import AssociationBillsPage from '../AssociationBillsPage.jsx';
 import RecordsPage from '../RecordsPage.jsx';
+import BillReviewPage from '../BillReviewPage.jsx';
 import { clearGlobalEditMode } from '../../../shared/lib/globalEditMode.js';
 import {
   createBill,
   fetchBills,
   fetchMergedBills,
   fetchPropertyRecords,
+  lookupPropertyByAccountNumber,
   updateBill,
   uploadBill
 } from '../../../shared/lib/api.js';
@@ -148,7 +150,10 @@ vi.mock('../../../shared/lib/api.js', () => ({
     mockBills = mockBills.map((row) => (Number(row.id) === Number(id) ? { ...row, ...payload } : row));
     return { success: true, message: 'Bill record updated successfully.' };
   }),
-  uploadBill: vi.fn(async () => ({ success: true, data: {} }))
+  uploadBill: vi.fn(async () => ({ success: true, data: {} })),
+  lookupPropertyByAccountNumber: vi.fn(async () => {
+    throw new Error('No matching property found for this account number.');
+  })
 }));
 
 function renderWithProviders(ui, initialEntries = ['/']) {
@@ -170,6 +175,7 @@ function renderWithProviders(ui, initialEntries = ['/']) {
 describe('Billing flow integration coverage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.clear();
     window.sessionStorage.clear();
     clearGlobalEditMode();
 
@@ -183,6 +189,9 @@ describe('Billing flow integration coverage', () => {
       }
     ];
     nextBillId = 100;
+    lookupPropertyByAccountNumber.mockImplementation(async () => {
+      throw new Error('No matching property found for this account number.');
+    });
   });
 
   it('creates a water bill and surfaces it in Records water view', async () => {
@@ -400,6 +409,119 @@ describe('Billing flow integration coverage', () => {
     expect(screen.getByText(/This file was rejected and was not added to Bills Review\./)).toBeInTheDocument();
     expect(screen.getByLabelText('Water Account No.')).toHaveValue('');
     expect(createBill).not.toHaveBeenCalled();
+  });
+
+  it('accepts mixed association invoice upload in Water tab when water fields are extracted', async () => {
+    uploadBill.mockResolvedValueOnce({
+      success: true,
+      data: {
+        bill_type: 'association_dues',
+        association_dues: '7440.00',
+        association_due_date: '2026-02-20',
+        water_amount: '215.00',
+        water_due_date: '2026-02-20',
+        water_payment_status: 'Unpaid'
+      }
+    });
+
+    const paymentView = renderWithProviders(<WaterBillsPage />, ['/bills/water']);
+
+    await waitFor(() => {
+      expect(fetchPropertyRecords).toHaveBeenCalled();
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Upload Bill' }));
+    expect(await screen.findByText('Upload files')).toBeInTheDocument();
+
+    const uploadInput = paymentView.container.querySelector('.upload-modal input[type="file"]');
+    expect(uploadInput).not.toBeNull();
+
+    const mixedFile = new File(['dummy content'], '8183_SW-9E FEBRUARY 2026 BILLING INVOICE.pdf', {
+      type: 'application/pdf'
+    });
+    fireEvent.change(uploadInput, { target: { files: [mixedFile] } });
+
+    await waitFor(() => {
+      expect(uploadBill).toHaveBeenCalledTimes(1);
+    });
+
+    expect(screen.queryByText('Bill Type Mismatch')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Water')).toHaveValue('215.00');
+    expect(screen.getByLabelText('Due Date Water')).toHaveValue('2026-02-20');
+    expect(screen.getByLabelText('Payment Status Water')).toHaveValue('Unpaid');
+  });
+
+  it('creates separate Association and Water rows in Bill Review for mixed invoices', async () => {
+    uploadBill.mockResolvedValueOnce({
+      success: true,
+      data: {
+        bill_type: 'association_dues',
+        billing_period: '2026-02',
+        association_dues: '7440.00',
+        association_due_date: '2026-02-20',
+        association_payment_status: 'Unpaid',
+        water_amount: '215.00',
+        water_due_date: '2026-02-20',
+        water_payment_status: 'Unpaid'
+      }
+    });
+
+    const reviewView = renderWithProviders(<BillReviewPage />, ['/bills/review']);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Upload Bills' }));
+    expect(await screen.findByText('Upload files')).toBeInTheDocument();
+
+    const uploadInput = reviewView.container.querySelector('.upload-modal input[type="file"]');
+    expect(uploadInput).not.toBeNull();
+
+    const mixedFile = new File(['dummy content'], '8183_SW-9E FEBRUARY 2026 BILLING INVOICE.pdf', {
+      type: 'application/pdf'
+    });
+    fireEvent.change(uploadInput, { target: { files: [mixedFile] } });
+
+    await waitFor(() => {
+      expect(uploadBill).toHaveBeenCalledTimes(1);
+    });
+
+    expect(await screen.findByText('Association')).toBeInTheDocument();
+    expect(screen.getByText('Water')).toBeInTheDocument();
+  });
+
+  it('does not auto-fill property when account lookup returns needs_review', async () => {
+    lookupPropertyByAccountNumber.mockResolvedValueOnce({
+      success: true,
+      data: {
+        match_status: 'needs_review',
+        candidate_count: 2,
+        candidates: [
+          { property: 'Lafayette', property_list_id: 1 },
+          { property: 'Oak Residence', property_list_id: 2 }
+        ]
+      }
+    });
+
+    renderWithProviders(<WaterBillsPage />, ['/bills/water']);
+
+    await waitFor(() => {
+      expect(fetchPropertyRecords).toHaveBeenCalled();
+    });
+
+    const propertyInput = await screen.findByLabelText('Property / DD');
+    expect(propertyInput).toHaveValue('');
+
+    fireEvent.change(screen.getByLabelText('Water Account No.'), { target: { value: 'WTR-AMBIG-01' } });
+
+    await waitFor(
+      () => {
+        expect(lookupPropertyByAccountNumber).toHaveBeenCalled();
+      },
+      { timeout: 3000 }
+    );
+
+    expect(propertyInput).toHaveValue('');
+    expect(
+      await screen.findByText(/Multiple properties share this account number/i)
+    ).toBeInTheDocument();
   });
 
   it('creates an electricity bill and surfaces it in Records electricity view', async () => {

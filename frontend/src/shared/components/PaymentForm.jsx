@@ -57,8 +57,6 @@ export default function PaymentForm({
   onNavigateNext,
   onNavigateBack,
   onOpenUpload,
-  onOpenAccountLookupUpload,
-  importingAccountLookup,
   nextButtonLabel
 }) {
   return (
@@ -121,20 +119,9 @@ export default function PaymentForm({
                 onChange={onUpdateField}
               />
             </label>
-            <p className="muted-text bill-input-hint bill-header-hint">
-              Choose an existing Property Record to auto-fill shared details.
-            </p>
           </div>
         </div>
         <div className="card-title-actions">
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={onOpenAccountLookupUpload}
-            disabled={saving || uploading || importingAccountLookup}
-          >
-            {importingAccountLookup ? 'Importing Accounts...' : 'Upload Account Files'}
-          </button>
           <button type="button" className="btn btn-secondary" onClick={onOpenUpload} disabled={saving || uploading}>
             Upload Bill
           </button>

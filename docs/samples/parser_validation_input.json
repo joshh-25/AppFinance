@@ -2,26 +2,92 @@
   {
     "path": "ExcelExample/8183_SW-9E FEBRUARY 2026 BILLING INVOICE.pdf",
     "name": "8183_SW-9E FEBRUARY 2026 BILLING INVOICE.pdf",
+    "expected_bill_type": "association_dues",
+    "expected_present_fields": [
+      "association_dues",
+      "association_due_date",
+      "water_amount",
+      "water_due_date"
+    ],
+    "expected_values": {
+      "association_dues": "7440.00",
+      "association_due_date": "2026-02-20",
+      "association_payment_status": "Unpaid",
+      "water_amount": "215.00",
+      "water_due_date": "2026-02-20",
+      "water_payment_status": "Unpaid"
+    },
     "text": "THE PALLADIUM CONDOMINIUM ASSOCIATION, INC.\nThe Palladium, Megaworld Blvd., Buhang Taft North, Mandurriao, 5000 Iloilo City (Capital) Iloilo Philippines\nNON-V AT REG. TIN 609-875-153-00000\nBILLING INVOICE\nNo. 8183\nDate Billed February 5, 2026Due Date February 20, 2026\nBill To: Account SummaryName: SPS. ARLENE & LOUIE TIRADOR Previous Balance -Address: SW-9E The Palladium Megaworld Blvd. Buhang Taft North, Mandurriao Iloilo City 5000Current ChargesTIN:           Sales 7,655.00Less: Discount           Credit MemoTotal Balance Due 7,655.00\nDate Description Amount CM Ref. CM Amount BalanceFebruary 5, 2026February 2026 Association Dues- 7,440.00-                    - 7,440.00-                                     February 5, 2026Water Cons. (Rate 43Php/cu.m.): 5 cu.m.- 215.00-                      - 215.00-                                       \n December 31, 2025 Meter Reading: 171 cu.m.\n January 31, 2025 Meter Reading: 176 cu.m.February 5, 2026 Interest from Unpaid Statement of Account/s -  -\nFebruary 5, 2026 Retro-Billing for Parking \nFebruary 5, 2026 Parking Dues (80Php/sqm)\nFebruary 5, 2026\nTotal Current Charges 7,655.00\nTotal Balance Due 7,655.00\nAging Aging0-30 Days 31-60 Days 61-90 Days Over 90 DaysInterest Total\n Over 90 Days SOA  -  - November 2025 SOA  -  - December 2025 SOA  -  - January 2026 SOA -  - TOTAL  -\nPREPARED BY: REVIEWED BY: NOTED BY:\nMS. SHIRLEY T. GELITO MS. TERECELYN DIDELES JANINE CAMILLE BARTONICOBilling and Collection Assistant Property Accountant Accounts Manager\nPlease make all checks payable to THE PALLADIUM CONDOMINIUM ASSOCIATION, INC. Kindly coordinate with the undersigned for any queries within 3 days upon receipt of invoice, otherwise billing is deemed correct. Please submit simultaneously with your payment the corresponding Creditable Tax Witheld at Source (2307) and validated deposit slip or transfer slip for payment  deposited directly for Official Receipt issuance. Failure to settle on or before end of the month will be charged a 2% interest on association dues and 2% for utilities based on principal.  Please email us at billing.palladium@asia-affinity.com or contact us at 0917 170 7677 for any query about your bill.\nTHIS BILLING INVOICE SHALL BE VALID FIVE (5) YEARS FROM THE DATE OF ATP.\n30 Bklts  (50 x 3)  0001-1500 BIR Authority to Print No. 074AU20220000004452 THIS DOCUMENT IS NOT VALID FOR CLAIM OF INPUT TAXES.\nDate Issued 06-10-2022; Valid until 06-09-2027 ILOILO PRINTING & SERVICES\nTEODORICO A. ANTIQUEÑA - Prop. R. Mapa St., Old Airport Rd., Mandurriao, Iloilo City\nEmail:iloiloprinting@yahoo.com  TIN: 154-542-277-000 V ATAccreditation # 074MP20190000000004 03-JAN-19"
   },
   {
     "path": "ExcelExample/MANABE43090802-202601MANABE43090802_gYWb.pdf",
     "name": "MANABE43090802-202601MANABE43090802_gYWb.pdf",
+    "expected_bill_type": "electricity",
+    "expected_present_fields": [
+      "electricity_account_no",
+      "electricity_amount",
+      "electricity_due_date",
+      "electricity_payment_status"
+    ],
+    "expected_values": {
+      "electricity_account_no": "MANABE43090802",
+      "electricity_due_date": "2026-02-01",
+      "electricity_payment_status": "Unpaid"
+    },
     "text": "MORE ELECTRIC AND POWER CORPORATION\nGST Building Quezon Street, Barangay Sampaguita, Iloilo City\nVAT REG. TIN 007-106-367-000\nFor inquiries you can contact us at (033) 330-MORE / (033) 330-6673,\nyou can email us at customercare@morepower.ph or visit us at www.morepower.ph\nCustomer Acct. No.: MANABE43090802 Class: RESIDENTIAL\nCustomer Name: 5Z, LPSQ Business Style:\nAddress: LAFAYETTE PARK SQUARE ABETO MIRASOL, MANDURRIAO, ILOILO CI.. TIN (for Commercial Acct.):\n BILLING INVOICE  No. BI000000000528062   \nBILL INFORMATION\nReading Date Next Meter Reading Load Factor\n20-Jan-2026 20-Feb-2026 0.00\nBilling Month Due Date Billing Period\nJan 2026 01-Feb-2026 20-Dec-2025 - 20-Jan-2026\nMeter No. Serial No. Demand Connected Load\nMP120034 3FWNM209701 0\nPresent Rdg. Previous Rdg. Multiplier Consumption\n8567.00 8399.00 1 168.00\nBILL COMPONENT\nBASE PRICE AMOUNT\nMORE RELATED CHARGES\n  Distribution Charge 168.00 1.5371 258.23\n  Demand Charge 0.00\n  Supply Charge 168.00 0.1976 33.20\n  Metering Charge 168.00 0.5879 98.77\n  Retail Metering Charge 5.00\n  Regulatory Reset Fee Adjustment 168.00 (0.0023) (0.39)\nSub Total 394.81\nSUPPLIER RELATED CHARGES\n  Generation Charge 168.00 6.2752 1,054.23\n  Transmission Charge 168.00 1.9220 322.90\n  System Loss Charge 168.00 0.4637 77.90\nSub Total 1,455.03\nSUBSIDIES\n  Lifeline Rate Charge 168.00 0.0055 0.92\n  Senior Citizen Subsidy 0.0008 0.13\nSub Total 1.05\nGOVERNMENT CHARGES\n  VAT on Generation 1,054.23 0.0837 88.19\n  VAT on Transmission 322.90 0.1160 37.46\n  VAT on System Loss 77.90 0.0922 7.18\n  VAT on DSM and Other Charges 395.86 0.1200 47.50\n  Franchise Tax 1,850.89 0.0083 15.27\n  LFT Adj 168.00 -0.0070 (1.18)\n  RPT Charge 168.00 0.0186 3.12\n  RPT Adj 168.00 0.0029 0.49\n  Missionary Electrification 168.00 0.1993 33.48\n  Environmental Charge 168.00 0.0025 0.42\n  NPC Stranded Debt 168.00 0.0428 7.19\n  FIT - Allowance 168.00 0.2011 33.78\n  GEA-All (Renewable) 168.00 0.0371 6.23\n  REC Recovery 0.00\nSub Total 279.13\n TOTAL CURRENT BILL AMOUNT  2,130.02\nBILL BREAKDOWN\nPrevious Balance 4,281.88  \nAmount Paid 0.00  \nAdjustment 0.00  \nOverdue / Balance 4,281.88  \nSurcharge / Reconnection Fee 94.81  \nCurrent Charges 2,130.02  \nTotal Amount Due 6,506.71  \n \nOSCA/SC/Other ID No:          SC/Signature:  \n \nPAYMENT REMINDERS\n1. Make sure that the account number you provide is correct.\n2. Please pay on or before your due date to avoid penalty and any inconvenience\nwhich may be caused by the disconnection of your electric service. A\nDisconnection Notice will be issued for failure to settle current bill after due date.\n3. Payment can be made on, before, or after due date at MORE Office or thru any of\nthe accredited banks, payment centers, or via GCash and DragonPay. (See\nMORE website for list of accredited third-party collecting agents)\n4. Always ask for an official receipt or validated receipt.\n5. A two percent (2%) surcharge on the UNPAID AMOUNT of the bill shall be\ncharged to the customer on the next billing cycle.\n6. If you received a Disconnection Notice (separate notice or embedded in your bill),\nplease pay within 48-hours to avoid disconnection.\n7. For payments received after disconnection of service, a Twenty Pesos (Php\n20.00) reconnection fee, exclusive of the value-added tax, shall be charged on\nthe next billing cycle. \n  Disputes not settled by our Consumer Welfare Desk can be elevated to the ERC Consumer\n  Affairs Service at (02) 687-55-77 or by email at consumer@erc.gov.ph\nANNOUNCEMENT: \nIf electric service has been disconnected due to non-payment of bill, a BILL DEPOSIT will be collected\nand/or adjusted based on your actual average monthly bill in the past 12 months or P2,500 whichever is\nhigher.\nDISCONNECTION NOTICE\nPlease pay immediately your unpaid electric consumption in the sum indicated as overdue. If the amount remains\nunpaid, we will be constrained to disconnect your electric service after 48 hours from receipt of this notice. Kindly\ndisregard this notice if you have already made prior payment arrangements. For other concerns and inquiries, you\nmay call our hotline at (033) 330-MORE (6673); message us in FB Messenger, MORE Power Iloilo; visit our website at\nwww.morepower.com.ph; or email us at customercare@morepower.ph.\nConsumption for 12 Months\nDate and time: January 21, 2026 10:01:42 AM\nAMOUNT (PHP)\nVatable Sales 1,935.54 \nVAT-Exempt Sales 98.80 \nZero Rated Sales 0.00 \nVAT Amount 190.49 \nTotal Sales (Vat Inclusive) 2,224.83 \nLess: SC Discount 0.00 \nLess: Withholding Tax 0.00 \nEWT 2%: 0.00 \nFT 5%: 0.00 \nSubtotal: 6,506.71 \nAmount Due: 6,506.71 \n \nMORE ELECTRIC AND POWER CORPORATION COLLECTING AGENT STUB\nVAT REG. TIN 007-106-367-000 PAY YOUR BILL ONLY WITH OUR ACCREDITED BANKS AND PAYMENT CENTERS.\n \nCustomer Acct. No. Billing Month Customer Details Unpaid Balance Surcharge Current Total Amount Due\nMANABE43090802 Jan 2026 5Z, LPSQ / LAFAYETTE PARK SQUARE AB... 4,281.88   94.81   2,130.02   6,506.71   \nLandmark  BESIDE ONE MADISON PLACE\nDate of Last Payment:\nOVERDUE BALANCE IS DUE IMMEDIATELY Current Bill Due Date: 01-Feb-2026\nTO AVOID DISCONNECTION. Billing Invoice: BI000000000528062\nPermit Number: AC_123_052024_000161; Date issued: May 29, 2024; Range of Approved Numbers: BI000000000000001 to BI999999999999999\nPowered by TCPDF (www.tcpdf.org)"
   },
   {
     "path": "docs/samples/electricity-bill-sample.pdf",
     "name": "electricity-bill-sample.pdf",
+    "expected_bill_type": "electricity",
+    "expected_present_fields": [
+      "electricity_account_no",
+      "electricity_amount",
+      "electricity_due_date",
+      "electricity_payment_status"
+    ],
+    "expected_values": {
+      "electricity_account_no": "ELEC-0091382",
+      "electricity_amount": "3250.75",
+      "electricity_due_date": "2026-03-27",
+      "electricity_payment_status": "Unpaid"
+    },
     "text": "ELECTRICITY BILL STATEMENT\nProvider: City Electric Utility\nBilling Period: March 2026\nProperty/DD: 24 LPS 9PQ\nProperty: Lafayette\nElectricity Account No: ELEC-0091382\nAmount Due: 3250.75\nDue Date: 2026-03-27\nPayment Status: Unpaid\nReference No: CEU-2026-03-00441"
   },
   {
     "path": "docs/samples/water-bill-sample.pdf",
     "name": "water-bill-sample.pdf",
+    "expected_bill_type": "water",
+    "expected_present_fields": [
+      "water_account_no",
+      "water_amount",
+      "water_due_date",
+      "water_payment_status"
+    ],
+    "expected_values": {
+      "water_account_no": "WTR-0024938",
+      "water_amount": "780.25",
+      "water_due_date": "2026-03-25",
+      "water_payment_status": "Unpaid"
+    },
     "text": "WATER BILL STATEMENT\nProvider: Metro Water Utility\nBilling Period: March 2026\nProperty/DD: 24 LPS 9PQ\nProperty: Lafayette\nWater Account No: WTR-0024938\nAmount Due: 780.25\nDue Date: 2026-03-25\nPayment Status: Unpaid\nReference No: MW-2026-03-00098"
   },
   {
     "path": "docs/samples/wifi-bill-sample.pdf",
     "name": "wifi-bill-sample.pdf",
+    "expected_bill_type": "internet",
+    "expected_present_fields": [
+      "internet_account_no",
+      "wifi_amount",
+      "wifi_due_date",
+      "wifi_payment_status"
+    ],
+    "expected_values": {
+      "internet_account_no": "INT-0049281",
+      "wifi_amount": "1899.00",
+      "wifi_due_date": "2026-03-24",
+      "wifi_payment_status": "Unpaid"
+    },
     "text": "WIFI / INTERNET BILL STATEMENT\nProvider: Smart Home WiFi\nBilling Period: March 2026\nProperty/DD: 24 LPS 9PQ\nProperty: Lafayette\nInternet Account No: INT-0049281\nAmount Due: 1899.00\nDue Date: 2026-03-24\nPayment Status: Unpaid\nReference No: SHW-2026-03-00217"
   }
 ]

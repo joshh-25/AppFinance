@@ -4,6 +4,112 @@
  * Purpose: Property master (property_list) CRUD handlers.
  */
 
+function sync_property_account_directory_link($pdo, $propertyListId, $propertyName, $previousPropertyName = '')
+{
+    if (
+        !function_exists('table_exists') ||
+        !table_exists($pdo, 'property_account_directory') ||
+        !function_exists('table_column_exists') ||
+        !table_column_exists($pdo, 'property_account_directory', 'property_list_id')
+    ) {
+        return;
+    }
+
+    $safeId = normalize_positive_int($propertyListId);
+    $safeProperty = trim((string) $propertyName);
+    $safePreviousProperty = trim((string) $previousPropertyName);
+    if ($safeId <= 0 || $safeProperty === '') {
+        return;
+    }
+
+    $findByPropertyListIdStmt = $pdo->prepare(
+        "SELECT `id`, `property`, `electricity_account_no`, `water_account_no`, `wifi_account_no`
+         FROM `property_account_directory`
+         WHERE `property_list_id` = ?
+         LIMIT 1"
+    );
+    $findByPropertyStmt = $pdo->prepare(
+        "SELECT `id`, `property`, `property_list_id`, `electricity_account_no`, `water_account_no`, `wifi_account_no`
+         FROM `property_account_directory`
+         WHERE LOWER(TRIM(COALESCE(`property`, ''))) = LOWER(TRIM(?))
+         LIMIT 1"
+    );
+    $updateRowStmt = $pdo->prepare(
+        "UPDATE `property_account_directory`
+         SET `property` = ?, `property_list_id` = ?, `updated_at` = CURRENT_TIMESTAMP
+         WHERE `id` = ?"
+    );
+    $insertRowStmt = $pdo->prepare(
+        "INSERT INTO `property_account_directory` (`property`, `property_list_id`)
+         VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE
+            `property` = VALUES(`property`),
+            `property_list_id` = VALUES(`property_list_id`),
+            `updated_at` = CURRENT_TIMESTAMP"
+    );
+    $mergeTargetStmt = $pdo->prepare(
+        "UPDATE `property_account_directory`
+         SET
+            `property` = ?,
+            `property_list_id` = ?,
+            `electricity_account_no` = CASE
+                WHEN TRIM(COALESCE(`electricity_account_no`, '')) = '' THEN ?
+                ELSE `electricity_account_no`
+            END,
+            `water_account_no` = CASE
+                WHEN TRIM(COALESCE(`water_account_no`, '')) = '' THEN ?
+                ELSE `water_account_no`
+            END,
+            `wifi_account_no` = CASE
+                WHEN TRIM(COALESCE(`wifi_account_no`, '')) = '' THEN ?
+                ELSE `wifi_account_no`
+            END,
+            `updated_at` = CURRENT_TIMESTAMP
+         WHERE `id` = ?"
+    );
+    $deleteByIdStmt = $pdo->prepare("DELETE FROM `property_account_directory` WHERE `id` = ?");
+
+    $findByPropertyListIdStmt->execute([$safeId]);
+    $byId = $findByPropertyListIdStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+
+    $findByPropertyStmt->execute([$safeProperty]);
+    $byProperty = $findByPropertyStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+
+    if ($byId && $byProperty && (int) $byId['id'] !== (int) $byProperty['id']) {
+        $mergeTargetStmt->execute([
+            $safeProperty,
+            $safeId,
+            trim((string) ($byId['electricity_account_no'] ?? '')),
+            trim((string) ($byId['water_account_no'] ?? '')),
+            trim((string) ($byId['wifi_account_no'] ?? '')),
+            (int) $byProperty['id'],
+        ]);
+        $deleteByIdStmt->execute([(int) $byId['id']]);
+        return;
+    }
+
+    if ($byId) {
+        $updateRowStmt->execute([$safeProperty, $safeId, (int) $byId['id']]);
+        return;
+    }
+
+    if ($byProperty) {
+        $updateRowStmt->execute([$safeProperty, $safeId, (int) $byProperty['id']]);
+        return;
+    }
+
+    if ($safePreviousProperty !== '' && strcasecmp($safePreviousProperty, $safeProperty) !== 0) {
+        $findByPropertyStmt->execute([$safePreviousProperty]);
+        $byPreviousProperty = $findByPropertyStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        if ($byPreviousProperty) {
+            $updateRowStmt->execute([$safeProperty, $safeId, (int) $byPreviousProperty['id']]);
+            return;
+        }
+    }
+
+    $insertRowStmt->execute([$safeProperty, $safeId]);
+}
+
 function handle_property_actions($action)
 {
     if ($action === 'property_record_create' && $_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -56,6 +162,7 @@ function handle_property_actions($action)
             ]);
 
             $newId = (int) $pdo->lastInsertId();
+            sync_property_account_directory_link($pdo, $newId, $normalized['property'], '');
             $created = find_property_list_by_id($pdo, $newId);
 
             $syncStmt = $pdo->prepare(
@@ -224,6 +331,7 @@ function handle_property_actions($action)
                 $normalized['penalty'],
                 $id,
             ]);
+            sync_property_account_directory_link($pdo, $id, $normalized['property'], (string) ($current['property'] ?? ''));
 
             $syncBillsStmt = $pdo->prepare(
                 "UPDATE `property_billing_records`

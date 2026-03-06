@@ -1,442 +1,149 @@
-[
-  {
-    "sample": "8183_SW-9E FEBRUARY 2026 BILLING INVOICE.pdf",
-    "path": "ExcelExample/8183_SW-9E FEBRUARY 2026 BILLING INVOICE.pdf",
-    "extracted_text_length": 2654,
-    "detected_bill_type": "electricity",
-    "validation": {
-      "valid": true,
-      "message": ""
-    },
-    "target_fields_detected": [
-      "electricity_amount",
-      "electricity_payment_status"
-    ],
-    "target_fields_missing": [
-      "electricity_account_no",
-      "electricity_due_date"
-    ],
-    "parsed_preview": {
-      "bill_type": "electricity",
-      "property_list_id": 0,
-      "dd": "",
-      "property": "Accountant Accounts Manager",
-      "unit_owner": "",
-      "classification": "",
-      "deposit": "",
-      "rent": "",
-      "internet_provider": "",
-      "internet_account_no": "",
-      "wifi_amount": "7655.00",
-      "wifi_due_date": "",
-      "wifi_payment_status": "Unpaid",
-      "water_account_no": "",
-      "water_amount": "7655.00",
-      "water_due_date": "",
-      "water_payment_status": "Unpaid",
-      "electricity_account_no": "",
-      "electricity_amount": "7655.00",
-      "electricity_due_date": "",
-      "electricity_payment_status": "Unpaid",
-      "association_dues": "215.00",
-      "association_due_date": "",
-      "association_payment_status": "Unpaid",
-      "total_amount_due": "",
-      "real_property_tax": "",
-      "rpt_payment_status": "",
-      "penalty": "",
-      "per_property_status": ""
-    },
-    "by_module": {
-      "water": {
-        "detected": [
-          "water_amount",
-          "water_payment_status"
-        ],
-        "missing": [
-          "water_account_no",
-          "water_due_date"
-        ]
-      },
-      "internet": {
-        "detected": [
-          "wifi_amount",
-          "wifi_payment_status"
-        ],
-        "missing": [
-          "internet_account_no",
-          "wifi_due_date"
-        ]
-      },
-      "electricity": {
-        "detected": [
-          "electricity_amount",
-          "electricity_payment_status"
-        ],
-        "missing": [
-          "electricity_account_no",
-          "electricity_due_date"
-        ]
-      },
-      "association_dues": {
-        "detected": [
-          "association_dues",
-          "association_payment_status"
-        ],
-        "missing": [
-          "association_due_date"
-        ]
-      }
-    }
+{
+  "summary": {
+    "total": 5,
+    "passed": 5,
+    "failed": 0
   },
-  {
-    "sample": "MANABE43090802-202601MANABE43090802_gYWb.pdf",
-    "path": "ExcelExample/MANABE43090802-202601MANABE43090802_gYWb.pdf",
-    "extracted_text_length": 5265,
-    "detected_bill_type": "electricity",
-    "validation": {
-      "valid": true,
-      "message": ""
+  "rows": [
+    {
+      "sample": "8183_SW-9E FEBRUARY 2026 BILLING INVOICE.pdf",
+      "path": "ExcelExample/8183_SW-9E FEBRUARY 2026 BILLING INVOICE.pdf",
+      "expected_bill_type": "association_dues",
+      "normalized_bill_type": "association_dues",
+      "detected_bill_type": "association_dues",
+      "validation": {
+        "valid": true,
+        "message": ""
+      },
+      "required_fields_detected": [
+        "association_dues",
+        "association_due_date"
+      ],
+      "required_fields_missing": [],
+      "expected_present_fields_missing": [],
+      "expected_value_mismatches": [],
+      "status": "PASS",
+      "parsed_preview": {
+        "bill_type": "association_dues",
+        "association_dues": "7440.00",
+        "association_due_date": "2026-02-20",
+        "water_amount": "215.00",
+        "water_due_date": "2026-02-20",
+        "association_payment_status": "Unpaid",
+        "water_payment_status": "Unpaid"
+      }
     },
-    "target_fields_detected": [
-      "electricity_account_no",
-      "electricity_amount",
-      "electricity_due_date",
-      "electricity_payment_status"
-    ],
-    "target_fields_missing": [],
-    "parsed_preview": {
-      "bill_type": "electricity",
-      "property_list_id": 0,
-      "dd": "5Z, LPSQ",
-      "property": "LAFAYETTE PARK SQUARE ABETO MIRASOL",
-      "unit_owner": "",
-      "classification": "",
-      "deposit": "",
-      "rent": "",
-      "internet_provider": "",
-      "internet_account_no": "MANABE43090802",
-      "wifi_amount": "6506.71",
-      "wifi_due_date": "Billing Period",
-      "wifi_payment_status": "Unpaid",
-      "water_account_no": "MANABE43090802",
-      "water_amount": "2130.02",
-      "water_due_date": "2026-02-01",
-      "water_payment_status": "Unpaid",
-      "electricity_account_no": "MANABE43090802",
-      "electricity_amount": "6506.71",
-      "electricity_due_date": "2026-02-01",
-      "electricity_payment_status": "Unpaid",
-      "association_dues": "",
-      "association_due_date": "2026-02-01",
-      "association_payment_status": "",
-      "total_amount_due": "6506.71",
-      "real_property_tax": "",
-      "rpt_payment_status": "",
-      "penalty": "",
-      "per_property_status": ""
+    {
+      "sample": "MANABE43090802-202601MANABE43090802_gYWb.pdf",
+      "path": "ExcelExample/MANABE43090802-202601MANABE43090802_gYWb.pdf",
+      "expected_bill_type": "electricity",
+      "normalized_bill_type": "",
+      "detected_bill_type": "electricity",
+      "validation": {
+        "valid": true,
+        "message": ""
+      },
+      "required_fields_detected": [
+        "electricity_amount",
+        "electricity_account_no",
+        "electricity_due_date",
+        "electricity_payment_status"
+      ],
+      "required_fields_missing": [],
+      "expected_present_fields_missing": [],
+      "expected_value_mismatches": [],
+      "status": "PASS",
+      "parsed_preview": {
+        "bill_type": "",
+        "electricity_amount": "6506.71",
+        "electricity_account_no": "MANABE43090802",
+        "electricity_due_date": "2026-02-01",
+        "electricity_payment_status": "Unpaid"
+      }
     },
-    "by_module": {
-      "water": {
-        "detected": [
-          "water_account_no",
-          "water_amount",
-          "water_due_date",
-          "water_payment_status"
-        ],
-        "missing": []
+    {
+      "sample": "electricity-bill-sample.pdf",
+      "path": "docs/samples/electricity-bill-sample.pdf",
+      "expected_bill_type": "electricity",
+      "normalized_bill_type": "electricity",
+      "detected_bill_type": "electricity",
+      "validation": {
+        "valid": true,
+        "message": ""
       },
-      "internet": {
-        "detected": [
-          "internet_account_no",
-          "wifi_amount",
-          "wifi_due_date",
-          "wifi_payment_status"
-        ],
-        "missing": []
+      "required_fields_detected": [
+        "electricity_amount",
+        "electricity_account_no",
+        "electricity_due_date",
+        "electricity_payment_status"
+      ],
+      "required_fields_missing": [],
+      "expected_present_fields_missing": [],
+      "expected_value_mismatches": [],
+      "status": "PASS",
+      "parsed_preview": {
+        "bill_type": "electricity",
+        "electricity_amount": "3250.75",
+        "electricity_account_no": "ELEC-0091382",
+        "electricity_due_date": "2026-03-27",
+        "electricity_payment_status": "Unpaid"
+      }
+    },
+    {
+      "sample": "water-bill-sample.pdf",
+      "path": "docs/samples/water-bill-sample.pdf",
+      "expected_bill_type": "water",
+      "normalized_bill_type": "water",
+      "detected_bill_type": "water",
+      "validation": {
+        "valid": true,
+        "message": ""
       },
-      "electricity": {
-        "detected": [
-          "electricity_account_no",
-          "electricity_amount",
-          "electricity_due_date",
-          "electricity_payment_status"
-        ],
-        "missing": []
+      "required_fields_detected": [
+        "water_amount",
+        "water_account_no",
+        "water_due_date",
+        "water_payment_status"
+      ],
+      "required_fields_missing": [],
+      "expected_present_fields_missing": [],
+      "expected_value_mismatches": [],
+      "status": "PASS",
+      "parsed_preview": {
+        "bill_type": "water",
+        "water_amount": "780.25",
+        "water_account_no": "WTR-0024938",
+        "water_due_date": "2026-03-25",
+        "water_payment_status": "Unpaid"
+      }
+    },
+    {
+      "sample": "wifi-bill-sample.pdf",
+      "path": "docs/samples/wifi-bill-sample.pdf",
+      "expected_bill_type": "internet",
+      "normalized_bill_type": "internet",
+      "detected_bill_type": "internet",
+      "validation": {
+        "valid": true,
+        "message": ""
       },
-      "association_dues": {
-        "detected": [
-          "association_due_date"
-        ],
-        "missing": [
-          "association_dues",
-          "association_payment_status"
-        ]
+      "required_fields_detected": [
+        "wifi_amount",
+        "internet_account_no",
+        "wifi_due_date",
+        "wifi_payment_status"
+      ],
+      "required_fields_missing": [],
+      "expected_present_fields_missing": [],
+      "expected_value_mismatches": [],
+      "status": "PASS",
+      "parsed_preview": {
+        "bill_type": "internet",
+        "wifi_amount": "1899.00",
+        "internet_account_no": "INT-0049281",
+        "wifi_due_date": "2026-03-24",
+        "wifi_payment_status": "Unpaid"
       }
     }
-  },
-  {
-    "sample": "electricity-bill-sample.pdf",
-    "path": "docs/samples/electricity-bill-sample.pdf",
-    "extracted_text_length": 262,
-    "detected_bill_type": "electricity",
-    "validation": {
-      "valid": true,
-      "message": ""
-    },
-    "target_fields_detected": [
-      "electricity_account_no",
-      "electricity_amount",
-      "electricity_payment_status"
-    ],
-    "target_fields_missing": [
-      "electricity_due_date"
-    ],
-    "parsed_preview": {
-      "bill_type": "electricity",
-      "property_list_id": 0,
-      "dd": "24 LPS 9PQ",
-      "property": "Lafayette",
-      "unit_owner": "",
-      "classification": "",
-      "deposit": "",
-      "rent": "",
-      "internet_provider": "City Electric Utility",
-      "internet_account_no": "ELEC-0091382",
-      "wifi_amount": "3250.75",
-      "wifi_due_date": "2026-03-27",
-      "wifi_payment_status": "Unpaid",
-      "water_account_no": "",
-      "water_amount": "3250.75",
-      "water_due_date": "2026-03-27",
-      "water_payment_status": "Unpaid",
-      "electricity_account_no": "ELEC-0091382",
-      "electricity_amount": "3250.75",
-      "electricity_due_date": "",
-      "electricity_payment_status": "Unpaid",
-      "association_dues": "",
-      "association_due_date": "2026-03-27",
-      "association_payment_status": "Unpaid",
-      "total_amount_due": "",
-      "real_property_tax": "",
-      "rpt_payment_status": "",
-      "penalty": "",
-      "per_property_status": ""
-    },
-    "by_module": {
-      "water": {
-        "detected": [
-          "water_amount",
-          "water_due_date",
-          "water_payment_status"
-        ],
-        "missing": [
-          "water_account_no"
-        ]
-      },
-      "internet": {
-        "detected": [
-          "internet_account_no",
-          "wifi_amount",
-          "wifi_due_date",
-          "wifi_payment_status"
-        ],
-        "missing": []
-      },
-      "electricity": {
-        "detected": [
-          "electricity_account_no",
-          "electricity_amount",
-          "electricity_payment_status"
-        ],
-        "missing": [
-          "electricity_due_date"
-        ]
-      },
-      "association_dues": {
-        "detected": [
-          "association_due_date",
-          "association_payment_status"
-        ],
-        "missing": [
-          "association_dues"
-        ]
-      }
-    }
-  },
-  {
-    "sample": "water-bill-sample.pdf",
-    "path": "docs/samples/water-bill-sample.pdf",
-    "extracted_text_length": 245,
-    "detected_bill_type": "water",
-    "validation": {
-      "valid": true,
-      "message": ""
-    },
-    "target_fields_detected": [
-      "water_account_no",
-      "water_amount",
-      "water_due_date",
-      "water_payment_status"
-    ],
-    "target_fields_missing": [],
-    "parsed_preview": {
-      "bill_type": "water",
-      "property_list_id": 0,
-      "dd": "24 LPS 9PQ",
-      "property": "Lafayette",
-      "unit_owner": "",
-      "classification": "",
-      "deposit": "",
-      "rent": "",
-      "internet_provider": "Metro Water Utility",
-      "internet_account_no": "WTR-0024938",
-      "wifi_amount": "780.25",
-      "wifi_due_date": "2026-03-25",
-      "wifi_payment_status": "Unpaid",
-      "water_account_no": "WTR-0024938",
-      "water_amount": "BILL STATEMENT",
-      "water_due_date": "2026-03-25",
-      "water_payment_status": "Unpaid",
-      "electricity_account_no": "",
-      "electricity_amount": "780.25",
-      "electricity_due_date": "",
-      "electricity_payment_status": "Unpaid",
-      "association_dues": "",
-      "association_due_date": "2026-03-25",
-      "association_payment_status": "Unpaid",
-      "total_amount_due": "",
-      "real_property_tax": "",
-      "rpt_payment_status": "",
-      "penalty": "",
-      "per_property_status": ""
-    },
-    "by_module": {
-      "water": {
-        "detected": [
-          "water_account_no",
-          "water_amount",
-          "water_due_date",
-          "water_payment_status"
-        ],
-        "missing": []
-      },
-      "internet": {
-        "detected": [
-          "internet_account_no",
-          "wifi_amount",
-          "wifi_due_date",
-          "wifi_payment_status"
-        ],
-        "missing": []
-      },
-      "electricity": {
-        "detected": [
-          "electricity_amount",
-          "electricity_payment_status"
-        ],
-        "missing": [
-          "electricity_account_no",
-          "electricity_due_date"
-        ]
-      },
-      "association_dues": {
-        "detected": [
-          "association_due_date",
-          "association_payment_status"
-        ],
-        "missing": [
-          "association_dues"
-        ]
-      }
-    }
-  },
-  {
-    "sample": "wifi-bill-sample.pdf",
-    "path": "docs/samples/wifi-bill-sample.pdf",
-    "extracted_text_length": 256,
-    "detected_bill_type": "internet",
-    "validation": {
-      "valid": true,
-      "message": ""
-    },
-    "target_fields_detected": [
-      "internet_account_no",
-      "wifi_amount",
-      "wifi_due_date",
-      "wifi_payment_status"
-    ],
-    "target_fields_missing": [],
-    "parsed_preview": {
-      "bill_type": "internet",
-      "property_list_id": 0,
-      "dd": "24 LPS 9PQ",
-      "property": "Lafayette",
-      "unit_owner": "",
-      "classification": "",
-      "deposit": "",
-      "rent": "",
-      "internet_provider": "Smart Home WiFi",
-      "internet_account_no": "INT-0049281",
-      "wifi_amount": "1899.00",
-      "wifi_due_date": "2026-03-24",
-      "wifi_payment_status": "Unpaid",
-      "water_account_no": "",
-      "water_amount": "1899.00",
-      "water_due_date": "2026-03-24",
-      "water_payment_status": "Unpaid",
-      "electricity_account_no": "",
-      "electricity_amount": "1899.00",
-      "electricity_due_date": "",
-      "electricity_payment_status": "Unpaid",
-      "association_dues": "",
-      "association_due_date": "2026-03-24",
-      "association_payment_status": "Unpaid",
-      "total_amount_due": "",
-      "real_property_tax": "",
-      "rpt_payment_status": "",
-      "penalty": "",
-      "per_property_status": ""
-    },
-    "by_module": {
-      "water": {
-        "detected": [
-          "water_amount",
-          "water_due_date",
-          "water_payment_status"
-        ],
-        "missing": [
-          "water_account_no"
-        ]
-      },
-      "internet": {
-        "detected": [
-          "internet_account_no",
-          "wifi_amount",
-          "wifi_due_date",
-          "wifi_payment_status"
-        ],
-        "missing": []
-      },
-      "electricity": {
-        "detected": [
-          "electricity_amount",
-          "electricity_payment_status"
-        ],
-        "missing": [
-          "electricity_account_no",
-          "electricity_due_date"
-        ]
-      },
-      "association_dues": {
-        "detected": [
-          "association_due_date",
-          "association_payment_status"
-        ],
-        "missing": [
-          "association_dues"
-        ]
-      }
-    }
-  }
-]
+  ]
+}

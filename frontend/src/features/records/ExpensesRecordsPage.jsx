@@ -150,7 +150,6 @@ export default function ExpensesRecordsPage() {
   return (
     <AppLayout
       title="Expenses Records"
-      subtitle="Search, review, edit, delete, and export expense records."
       contentClassName="shell-content-lock-scroll"
     >
       <Toast toasts={toasts} onDismiss={removeToast} />
@@ -172,9 +171,6 @@ export default function ExpensesRecordsPage() {
           </button>
           <button type="button" className="btn active" onClick={exportCsv} disabled={exporting}>
             {exporting ? 'Exporting...' : 'Export'}
-          </button>
-          <button type="button" className="btn btn-secondary" onClick={() => navigate('/records')}>
-            Back to Records
           </button>
         </div>
 
@@ -225,9 +221,14 @@ export default function ExpensesRecordsPage() {
             </div>
 
             <div className="pagination records-pagination">
-              <span>
-                Showing {pageStart}-{pageEnd} of {totalRows}
-              </span>
+              <div className="records-pagination-meta">
+                <button type="button" className="btn btn-secondary" onClick={() => navigate('/records')}>
+                  Back
+                </button>
+                <span>
+                  Showing {pageStart}-{pageEnd} of {totalRows}
+                </span>
+              </div>
               <div className="actions">
                 <button type="button" className="btn" onClick={() => setPage((prev) => Math.max(1, prev - 1))} disabled={page <= 1}>
                   Previous
