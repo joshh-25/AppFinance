@@ -268,6 +268,10 @@ export function getCompactReviewMessage(row) {
   const normalizedStatus = cleanTextValue(row?.status).toLowerCase();
   const validationMessage = cleanTextValue(row?.scan_error);
   const confidenceSummary = cleanTextValue(row?.data?.ocr_confidence?.summary).toLowerCase();
+  const accountLookupMessage = cleanTextValue(row?.data?.account_lookup_message);
+  if (accountLookupMessage !== '') {
+    return accountLookupMessage;
+  }
   if (normalizedStatus === 'ready' && validationMessage !== '') {
     if (confidenceSummary === 'medium') {
       return `Ready with heuristic OCR fields. ${validationMessage}`;
@@ -280,10 +284,6 @@ export function getCompactReviewMessage(row) {
   }
   if (validationMessage !== '') {
     return validationMessage;
-  }
-  const accountLookupMessage = cleanTextValue(row?.data?.account_lookup_message);
-  if (accountLookupMessage !== '') {
-    return accountLookupMessage;
   }
   if (String(row?.status || '').trim().toLowerCase() === 'scan_failed') {
     return cleanTextValue(row?.diagnostics?.title || 'Retry or requeue this scan.');

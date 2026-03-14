@@ -84,6 +84,21 @@ import {
 
 ensureRecordsEditWindowContext();
 
+const MIXED_UPLOAD_ACCEPTANCE_FIELDS = {
+  internet: ['wifi_amount', 'wifi_due_date'],
+  water: ['water_amount', 'water_due_date'],
+  electricity: ['electricity_amount', 'electricity_due_date'],
+  association_dues: ['association_dues', 'association_due_date']
+};
+
+function hasUsableMixedUploadFields(data, billType) {
+  const requiredFields = MIXED_UPLOAD_ACCEPTANCE_FIELDS[billType] || [];
+  if (requiredFields.length === 0) {
+    return false;
+  }
+  return requiredFields.every((field) => cleanTextValue(data?.[field]) !== '');
+}
+
 export default function PaymentFormPage({ billMode: billModeProp } = {}) {
   const { billType: urlBillType } = useParams();
   // Prop takes priority (used by integration test stub wrappers).
@@ -1329,7 +1344,9 @@ export default function PaymentFormPage({ billMode: billModeProp } = {}) {
       );
       const activeTypeValidation = validateUploadExtraction(normalized, activeBillType);
       const isDetectedTypeMismatch = detectedBillType !== '' && detectedBillType !== activeBillType;
-      const allowMixedUploadForActiveModule = isDetectedTypeMismatch && activeTypeValidation.valid;
+      const allowMixedUploadForActiveModule =
+        isDetectedTypeMismatch &&
+        (activeTypeValidation.valid || hasUsableMixedUploadFields(normalized, activeBillType));
 
       if (isDetectedTypeMismatch && !allowMixedUploadForActiveModule) {
         const detectedLabel = getBillTypeUploadLabel(detectedBillType);

@@ -1,5 +1,4 @@
 import { cleanTextValue } from '../../../shared/lib/billPropertyUtils.js';
-import { validateUploadExtraction } from '../../../shared/lib/ocrParser.js';
 
 export const ROWS_PER_PAGE = 10;
 export const EDIT_DRAFT_KEY_PREFIX = 'finance-bill-edit-draft:';
@@ -113,6 +112,13 @@ export const ACCOUNT_LOOKUP_FIELD_BY_BILL_TYPE = {
   internet: 'internet_account_no',
   water: 'water_account_no',
   electricity: 'electricity_account_no'
+};
+
+const MANUAL_REQUIRED_FIELDS_BY_TYPE = {
+  internet: ['internet_account_no', 'wifi_amount'],
+  water: ['water_account_no', 'water_amount'],
+  electricity: ['electricity_account_no', 'electricity_amount'],
+  association_dues: ['association_dues']
 };
 
 export const BILL_DUE_DATE_FIELDS = new Set([
@@ -295,9 +301,11 @@ export function getPreSaveBillError(form, billType) {
     return 'Choose the property first before saving this bill.';
   }
 
-  const validation = validateUploadExtraction(form, billType);
-  if (!validation.valid) {
-    return validation.message || 'Complete the missing bill details before saving.';
+  const requiredFields = MANUAL_REQUIRED_FIELDS_BY_TYPE[billType] || [];
+  const missingFields = requiredFields.filter((field) => cleanTextValue(form?.[field]) === '');
+  if (missingFields.length > 0) {
+    const labels = missingFields.map((field) => UPLOAD_FIELD_LABELS[field] || field);
+    return `Complete the missing bill details before saving: ${labels.join(', ')}.`;
   }
 
   return '';
