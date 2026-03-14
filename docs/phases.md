@@ -3,6 +3,7 @@
 ## Current Status
 - The core app already works for billing, property records, monthly records, OCR review, records, and dashboard use.
 - To reach a near-100% web app for real daily use, the next work should focus only on the highest-impact gaps.
+- Latest CI note: frontend billing integration regressions were fixed after release finalization, and the current branch has been republished to refresh GitHub Actions on the repaired state.
 - Phase 17 is complete: the Records -> Property Records handoff bug is fixed, the misleading remember-me control is removed, frontend lint is clean again, and regression coverage now protects the property edit handoff.
 - Phase 18 is complete: frontend access now matches the backend permission model, unsupported modules stay hidden, and mixed screens stay read-only instead of leading into avoidable forbidden save flows.
 - Phase 19 is complete: Bills Review queue state now persists in the backend, Dashboard review counts come from the same backend source, and review progress survives browser refreshes and device changes for the same signed-in user.
