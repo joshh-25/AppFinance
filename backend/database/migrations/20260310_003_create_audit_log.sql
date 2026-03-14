@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS `audit_log` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `event_name` VARCHAR(100) NOT NULL,
+    `entity_type` VARCHAR(50) NOT NULL DEFAULT '',
+    `entity_id` BIGINT NOT NULL DEFAULT 0,
+    `user_id` INT NOT NULL DEFAULT 0,
+    `username` VARCHAR(120) NOT NULL DEFAULT '',
+    `user_role` VARCHAR(20) NOT NULL DEFAULT '',
+    `ip_address` VARCHAR(45) NOT NULL DEFAULT '',
+    `request_method` VARCHAR(10) NOT NULL DEFAULT '',
+    `request_uri` VARCHAR(255) NOT NULL DEFAULT '',
+    `summary` VARCHAR(255) NOT NULL DEFAULT '',
+    `context_json` LONGTEXT NULL,
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_audit_log_created_at` (`created_at`),
+    KEY `idx_audit_log_event_name` (`event_name`),
+    KEY `idx_audit_log_entity` (`entity_type`, `entity_id`),
+    KEY `idx_audit_log_user` (`user_id`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

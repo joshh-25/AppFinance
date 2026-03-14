@@ -1,0 +1,411 @@
+{
+  "summary": {
+    "total": 9,
+    "passed": 9,
+    "failed": 0
+  },
+  "rows": [
+    {
+      "sample": "8183_SW-9E FEBRUARY 2026 BILLING INVOICE.pdf",
+      "path": "Examples/Excel/8183_SW-9E FEBRUARY 2026 BILLING INVOICE.pdf",
+      "expected_bill_type": "association_dues",
+      "normalized_bill_type": "association_dues",
+      "detected_bill_type": "association_dues",
+      "validation": {
+        "valid": true,
+        "message": "OCR confidence: medium. Heuristic fields: Property, DD.",
+        "warnings": [],
+        "missingFields": [],
+        "confidence": {
+          "summary": "medium",
+          "exactFields": [
+            "Due Period",
+            "Association Dues",
+            "Association Due Date"
+          ],
+          "heuristicFields": [
+            "Property",
+            "DD"
+          ],
+          "missingCriticalFields": []
+        }
+      },
+      "required_fields_detected": [
+        "association_dues",
+        "association_due_date"
+      ],
+      "required_fields_missing": [],
+      "expected_present_fields_missing": [],
+      "expected_value_mismatches": [],
+      "status": "PASS",
+      "parsed_preview": {
+        "bill_type": "association_dues",
+        "association_dues": "7440.00",
+        "association_due_date": "2026-02-20",
+        "water_amount": "215.00",
+        "water_due_date": "2026-02-20",
+        "association_payment_status": "Unpaid",
+        "water_payment_status": "Unpaid"
+      }
+    },
+    {
+      "sample": "MANABE43090802-202601MANABE43090802_gYWb.pdf",
+      "path": "Examples/Excel/MANABE43090802-202601MANABE43090802_gYWb.pdf",
+      "expected_bill_type": "electricity",
+      "normalized_bill_type": "",
+      "detected_bill_type": "electricity",
+      "validation": {
+        "valid": true,
+        "message": "OCR confidence: medium. Heuristic fields: Property, DD.",
+        "warnings": [],
+        "missingFields": [],
+        "confidence": {
+          "summary": "medium",
+          "exactFields": [
+            "Due Period",
+            "Electricity Amount",
+            "Electricity Account No.",
+            "Electricity Due Date"
+          ],
+          "heuristicFields": [
+            "Property",
+            "DD"
+          ],
+          "missingCriticalFields": []
+        }
+      },
+      "required_fields_detected": [
+        "electricity_amount",
+        "electricity_account_no",
+        "electricity_due_date"
+      ],
+      "required_fields_missing": [],
+      "expected_present_fields_missing": [],
+      "expected_value_mismatches": [],
+      "status": "PASS",
+      "parsed_preview": {
+        "bill_type": "",
+        "electricity_amount": "6506.71",
+        "electricity_account_no": "MANABE43090802",
+        "electricity_due_date": "2026-02-01",
+        "electricity_payment_status": "Unpaid"
+      }
+    },
+    {
+      "sample": "electricity-bill-sample.pdf",
+      "path": "Examples/Samples/electricity-bill-sample.pdf",
+      "expected_bill_type": "electricity",
+      "normalized_bill_type": "electricity",
+      "detected_bill_type": "electricity",
+      "validation": {
+        "valid": true,
+        "message": "OCR confidence: medium. Heuristic fields: Property, DD.",
+        "warnings": [],
+        "missingFields": [],
+        "confidence": {
+          "summary": "medium",
+          "exactFields": [
+            "Due Period",
+            "Electricity Amount",
+            "Electricity Account No.",
+            "Electricity Due Date"
+          ],
+          "heuristicFields": [
+            "Property",
+            "DD"
+          ],
+          "missingCriticalFields": []
+        }
+      },
+      "required_fields_detected": [
+        "electricity_amount",
+        "electricity_account_no",
+        "electricity_due_date"
+      ],
+      "required_fields_missing": [],
+      "expected_present_fields_missing": [],
+      "expected_value_mismatches": [],
+      "status": "PASS",
+      "parsed_preview": {
+        "bill_type": "electricity",
+        "electricity_amount": "3250.75",
+        "electricity_account_no": "ELEC-0091382",
+        "electricity_due_date": "2026-03-27",
+        "billing_period": "2026-03",
+        "dd": "24 LPS 9PQ",
+        "property": "Lafayette",
+        "electricity_payment_status": "Unpaid"
+      }
+    },
+    {
+      "sample": "water-bill-sample.pdf",
+      "path": "Examples/Samples/water-bill-sample.pdf",
+      "expected_bill_type": "water",
+      "normalized_bill_type": "water",
+      "detected_bill_type": "water",
+      "validation": {
+        "valid": true,
+        "message": "OCR confidence: medium. Heuristic fields: Property, DD.",
+        "warnings": [],
+        "missingFields": [],
+        "confidence": {
+          "summary": "medium",
+          "exactFields": [
+            "Due Period",
+            "Water Amount",
+            "Water Account No.",
+            "Water Due Date"
+          ],
+          "heuristicFields": [
+            "Property",
+            "DD"
+          ],
+          "missingCriticalFields": []
+        }
+      },
+      "required_fields_detected": [
+        "water_amount",
+        "water_account_no",
+        "water_due_date"
+      ],
+      "required_fields_missing": [],
+      "expected_present_fields_missing": [],
+      "expected_value_mismatches": [],
+      "status": "PASS",
+      "parsed_preview": {
+        "bill_type": "water",
+        "water_amount": "780.25",
+        "water_account_no": "WTR-0024938",
+        "water_due_date": "2026-03-25",
+        "billing_period": "2026-03",
+        "dd": "24 LPS 9PQ",
+        "property": "Lafayette",
+        "water_payment_status": "Unpaid"
+      }
+    },
+    {
+      "sample": "wifi-bill-sample.pdf",
+      "path": "Examples/Samples/wifi-bill-sample.pdf",
+      "expected_bill_type": "internet",
+      "normalized_bill_type": "internet",
+      "detected_bill_type": "internet",
+      "validation": {
+        "valid": true,
+        "message": "OCR confidence: medium. Heuristic fields: Property, DD.",
+        "warnings": [],
+        "missingFields": [],
+        "confidence": {
+          "summary": "medium",
+          "exactFields": [
+            "Due Period",
+            "WiFi Amount",
+            "Internet Account No.",
+            "WiFi Due Date"
+          ],
+          "heuristicFields": [
+            "Property",
+            "DD"
+          ],
+          "missingCriticalFields": []
+        }
+      },
+      "required_fields_detected": [
+        "wifi_amount",
+        "internet_account_no",
+        "wifi_due_date"
+      ],
+      "required_fields_missing": [],
+      "expected_present_fields_missing": [],
+      "expected_value_mismatches": [],
+      "status": "PASS",
+      "parsed_preview": {
+        "bill_type": "internet",
+        "wifi_amount": "1899.00",
+        "internet_account_no": "INT-0049281",
+        "wifi_due_date": "2026-03-24",
+        "billing_period": "2026-03",
+        "dd": "24 LPS 9PQ",
+        "property": "Lafayette",
+        "internet_provider": "Smart Home WiFi",
+        "wifi_payment_status": "Unpaid"
+      }
+    },
+    {
+      "sample": "OSI JAN 2026 SOA-1718.pdf",
+      "path": "Examples/Excel/OSI JAN 2026 SOA-1718.pdf",
+      "expected_bill_type": "association_dues",
+      "normalized_bill_type": "association_dues",
+      "detected_bill_type": "association_dues",
+      "validation": {
+        "valid": true,
+        "message": "OCR confidence: medium. Heuristic fields: Property, DD.",
+        "warnings": [],
+        "missingFields": [],
+        "confidence": {
+          "summary": "medium",
+          "exactFields": [
+            "Due Period",
+            "Association Dues",
+            "Association Due Date"
+          ],
+          "heuristicFields": [
+            "Property",
+            "DD"
+          ],
+          "missingCriticalFields": []
+        }
+      },
+      "required_fields_detected": [
+        "association_dues",
+        "association_due_date"
+      ],
+      "required_fields_missing": [],
+      "expected_present_fields_missing": [],
+      "expected_value_mismatches": [],
+      "status": "PASS",
+      "parsed_preview": {
+        "bill_type": "association_dues",
+        "association_dues": "2900.70",
+        "association_due_date": "2026-01-15",
+        "billing_period": "2026-01",
+        "association_payment_status": "Unpaid"
+      }
+    },
+    {
+      "sample": "51485 T3-10K Sps. Ibrahim Khalilullah & Marny Arambola Ringo Association Dues ftm of ((Billing Period}}.pdf",
+      "path": "Examples/Excel/51485 T3-10K Sps. Ibrahim Khalilullah & Marny Arambola Ringo Association Dues ftm of ((Billing Period}}.pdf",
+      "expected_bill_type": "association_dues",
+      "normalized_bill_type": "association_dues",
+      "detected_bill_type": "association_dues",
+      "validation": {
+        "valid": true,
+        "message": "OCR confidence: medium. Heuristic fields: Property, DD.",
+        "warnings": [],
+        "missingFields": [],
+        "confidence": {
+          "summary": "medium",
+          "exactFields": [
+            "Due Period",
+            "Association Dues",
+            "Association Due Date"
+          ],
+          "heuristicFields": [
+            "Property",
+            "DD"
+          ],
+          "missingCriticalFields": []
+        }
+      },
+      "required_fields_detected": [
+        "association_dues",
+        "association_due_date"
+      ],
+      "required_fields_missing": [],
+      "expected_present_fields_missing": [],
+      "expected_value_mismatches": [],
+      "status": "PASS",
+      "parsed_preview": {
+        "bill_type": "association_dues",
+        "association_dues": "5312.00",
+        "association_due_date": "2025-11-25",
+        "billing_period": "2025-11",
+        "property": "T3-10 K One Madison Place Condominium",
+        "water_amount": "594.88",
+        "water_due_date": "2025-11-25",
+        "association_payment_status": "Unpaid",
+        "water_payment_status": "Unpaid"
+      }
+    },
+    {
+      "sample": "13636_16T_NOVEMBER 2025 BILLING INVOICE.pdf",
+      "path": "Examples/Excel/13636_16T_NOVEMBER 2025 BILLING INVOICE.pdf",
+      "expected_bill_type": "association_dues",
+      "normalized_bill_type": "association_dues",
+      "detected_bill_type": "association_dues",
+      "validation": {
+        "valid": true,
+        "message": "OCR confidence: medium. Heuristic fields: Property, DD.",
+        "warnings": [],
+        "missingFields": [],
+        "confidence": {
+          "summary": "medium",
+          "exactFields": [
+            "Due Period",
+            "Association Dues",
+            "Association Due Date"
+          ],
+          "heuristicFields": [
+            "Property",
+            "DD"
+          ],
+          "missingCriticalFields": []
+        }
+      },
+      "required_fields_detected": [
+        "association_dues",
+        "association_due_date"
+      ],
+      "required_fields_missing": [],
+      "expected_present_fields_missing": [],
+      "expected_value_mismatches": [],
+      "status": "PASS",
+      "parsed_preview": {
+        "bill_type": "association_dues",
+        "association_dues": "3842.50",
+        "association_due_date": "2025-11-20",
+        "property": "Lafayette Park Square Lot 3 Buhang Taft North",
+        "billing_period": "2025-11",
+        "water_amount": "301.00",
+        "water_due_date": "2025-11-20",
+        "association_payment_status": "Unpaid",
+        "water_payment_status": "Unpaid"
+      }
+    },
+    {
+      "sample": "MANSRA33761475-202602MANSRA33761475_yedT.pdf",
+      "path": "Examples/Excel/MANSRA33761475-202602MANSRA33761475_yedT.pdf",
+      "expected_bill_type": "electricity",
+      "normalized_bill_type": "",
+      "detected_bill_type": "electricity",
+      "validation": {
+        "valid": true,
+        "message": "OCR confidence: medium. Heuristic fields: Property, DD.",
+        "warnings": [],
+        "missingFields": [],
+        "confidence": {
+          "summary": "medium",
+          "exactFields": [
+            "Due Period",
+            "Electricity Amount",
+            "Electricity Account No.",
+            "Electricity Due Date"
+          ],
+          "heuristicFields": [
+            "Property",
+            "DD"
+          ],
+          "missingCriticalFields": []
+        }
+      },
+      "required_fields_detected": [
+        "electricity_amount",
+        "electricity_account_no",
+        "electricity_due_date"
+      ],
+      "required_fields_missing": [],
+      "expected_present_fields_missing": [],
+      "expected_value_mismatches": [],
+      "status": "PASS",
+      "parsed_preview": {
+        "bill_type": "",
+        "electricity_amount": "12098.37",
+        "electricity_account_no": "MANSRA33761475",
+        "electricity_due_date": "2026-03-14",
+        "dd": "6 A NW, CAL1",
+        "property": "SAINT HONORE SAN RAFAEL",
+        "billing_period": "2026-03",
+        "electricity_payment_status": "Unpaid"
+      }
+    }
+  ]
+}

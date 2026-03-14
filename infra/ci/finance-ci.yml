@@ -1,0 +1,72 @@
+# Finance App CI workflow
+# Purpose: Run backend and frontend quality gates on push and pull request.
+name: finance-ci
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: mbstring, pdo, pdo_mysql, dom
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist
+        working-directory: backend
+
+      - name: PHP syntax checks
+        run: |
+          php -l backend/public/api.php
+          php -l backend/src/Core/LegacyBootstrap.php
+          php -l backend/src/Modules/Auth/LegacyAuth.php
+          php -l backend/src/Modules/Bills/LegacyBills.php
+          php -l backend/src/Modules/Property/LegacyProperty.php
+
+      - name: Backend tests
+        run: composer test
+        working-directory: backend
+
+  frontend:
+    name: Frontend Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Frontend tests
+        run: npm run test -- --run
+        working-directory: frontend
+
+      - name: OCR parser sample validation
+        run: node infra/scripts/validate-ocr-parser-samples.mjs --check
+
+      - name: Frontend build
+        run: npm run build
+        working-directory: frontend
+
+      - name: Frontend build freshness check
+        run: node infra/scripts/check-frontend-build-freshness.mjs

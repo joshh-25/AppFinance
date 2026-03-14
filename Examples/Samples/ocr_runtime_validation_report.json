@@ -1,0 +1,189 @@
+{
+  "summary": {
+    "total": 18,
+    "passed": 18,
+    "failed": 0
+  },
+  "rows": [
+    {
+      "sample": "8183_SW-9E FEBRUARY 2026 BILLING INVOICE.pdf",
+      "target": "ocr_api",
+      "expected_bill_type": "association_dues",
+      "detected_bill_type": "association_dues",
+      "required_fields_missing": [],
+      "expected_present_fields_missing": [],
+      "expected_value_mismatches": [],
+      "status": "PASS"
+    },
+    {
+      "sample": "8183_SW-9E FEBRUARY 2026 BILLING INVOICE.pdf",
+      "target": "n8n_webhook",
+      "expected_bill_type": "association_dues",
+      "detected_bill_type": "association_dues",
+      "required_fields_missing": [],
+      "expected_present_fields_missing": [],
+      "expected_value_mismatches": [],
+      "status": "PASS"
+    },
+    {
+      "sample": "MANABE43090802-202601MANABE43090802_gYWb.pdf",
+      "target": "ocr_api",
+      "expected_bill_type": "electricity",
+      "detected_bill_type": "electricity",
+      "required_fields_missing": [],
+      "expected_present_fields_missing": [],
+      "expected_value_mismatches": [],
+      "status": "PASS"
+    },
+    {
+      "sample": "MANABE43090802-202601MANABE43090802_gYWb.pdf",
+      "target": "n8n_webhook",
+      "expected_bill_type": "electricity",
+      "detected_bill_type": "electricity",
+      "required_fields_missing": [],
+      "expected_present_fields_missing": [],
+      "expected_value_mismatches": [],
+      "status": "PASS"
+    },
+    {
+      "sample": "electricity-bill-sample.pdf",
+      "target": "ocr_api",
+      "expected_bill_type": "electricity",
+      "detected_bill_type": "electricity",
+      "required_fields_missing": [],
+      "expected_present_fields_missing": [],
+      "expected_value_mismatches": [],
+      "status": "PASS"
+    },
+    {
+      "sample": "electricity-bill-sample.pdf",
+      "target": "n8n_webhook",
+      "expected_bill_type": "electricity",
+      "detected_bill_type": "electricity",
+      "required_fields_missing": [],
+      "expected_present_fields_missing": [],
+      "expected_value_mismatches": [],
+      "status": "PASS"
+    },
+    {
+      "sample": "water-bill-sample.pdf",
+      "target": "ocr_api",
+      "expected_bill_type": "water",
+      "detected_bill_type": "water",
+      "required_fields_missing": [],
+      "expected_present_fields_missing": [],
+      "expected_value_mismatches": [],
+      "status": "PASS"
+    },
+    {
+      "sample": "water-bill-sample.pdf",
+      "target": "n8n_webhook",
+      "expected_bill_type": "water",
+      "detected_bill_type": "water",
+      "required_fields_missing": [],
+      "expected_present_fields_missing": [],
+      "expected_value_mismatches": [],
+      "status": "PASS"
+    },
+    {
+      "sample": "wifi-bill-sample.pdf",
+      "target": "ocr_api",
+      "expected_bill_type": "internet",
+      "detected_bill_type": "internet",
+      "required_fields_missing": [],
+      "expected_present_fields_missing": [],
+      "expected_value_mismatches": [],
+      "status": "PASS"
+    },
+    {
+      "sample": "wifi-bill-sample.pdf",
+      "target": "n8n_webhook",
+      "expected_bill_type": "internet",
+      "detected_bill_type": "internet",
+      "required_fields_missing": [],
+      "expected_present_fields_missing": [],
+      "expected_value_mismatches": [],
+      "status": "PASS"
+    },
+    {
+      "sample": "OSI JAN 2026 SOA-1718.pdf",
+      "target": "ocr_api",
+      "expected_bill_type": "association_dues",
+      "detected_bill_type": "association_dues",
+      "required_fields_missing": [],
+      "expected_present_fields_missing": [],
+      "expected_value_mismatches": [],
+      "status": "PASS"
+    },
+    {
+      "sample": "OSI JAN 2026 SOA-1718.pdf",
+      "target": "n8n_webhook",
+      "expected_bill_type": "association_dues",
+      "detected_bill_type": "association_dues",
+      "required_fields_missing": [],
+      "expected_present_fields_missing": [],
+      "expected_value_mismatches": [],
+      "status": "PASS"
+    },
+    {
+      "sample": "51485 T3-10K Sps. Ibrahim Khalilullah & Marny Arambola Ringo Association Dues ftm of ((Billing Period}}.pdf",
+      "target": "ocr_api",
+      "expected_bill_type": "association_dues",
+      "detected_bill_type": "association_dues",
+      "required_fields_missing": [],
+      "expected_present_fields_missing": [],
+      "expected_value_mismatches": [],
+      "status": "PASS"
+    },
+    {
+      "sample": "51485 T3-10K Sps. Ibrahim Khalilullah & Marny Arambola Ringo Association Dues ftm of ((Billing Period}}.pdf",
+      "target": "n8n_webhook",
+      "expected_bill_type": "association_dues",
+      "detected_bill_type": "association_dues",
+      "required_fields_missing": [],
+      "expected_present_fields_missing": [],
+      "expected_value_mismatches": [],
+      "status": "PASS"
+    },
+    {
+      "sample": "13636_16T_NOVEMBER 2025 BILLING INVOICE.pdf",
+      "target": "ocr_api",
+      "expected_bill_type": "association_dues",
+      "detected_bill_type": "association_dues",
+      "required_fields_missing": [],
+      "expected_present_fields_missing": [],
+      "expected_value_mismatches": [],
+      "status": "PASS"
+    },
+    {
+      "sample": "13636_16T_NOVEMBER 2025 BILLING INVOICE.pdf",
+      "target": "n8n_webhook",
+      "expected_bill_type": "association_dues",
+      "detected_bill_type": "association_dues",
+      "required_fields_missing": [],
+      "expected_present_fields_missing": [],
+      "expected_value_mismatches": [],
+      "status": "PASS"
+    },
+    {
+      "sample": "MANSRA33761475-202602MANSRA33761475_yedT.pdf",
+      "target": "ocr_api",
+      "expected_bill_type": "electricity",
+      "detected_bill_type": "electricity",
+      "required_fields_missing": [],
+      "expected_present_fields_missing": [],
+      "expected_value_mismatches": [],
+      "status": "PASS"
+    },
+    {
+      "sample": "MANSRA33761475-202602MANSRA33761475_yedT.pdf",
+      "target": "n8n_webhook",
+      "expected_bill_type": "electricity",
+      "detected_bill_type": "electricity",
+      "required_fields_missing": [],
+      "expected_present_fields_missing": [],
+      "expected_value_mismatches": [],
+      "status": "PASS"
+    }
+  ]
+}
